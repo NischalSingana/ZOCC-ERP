@@ -92,8 +92,11 @@ export default function LiquidEther({
         this.renderer.setClearColor(new THREE.Color(0x000000), 0);
         this.renderer.setPixelRatio(this.pixelRatio);
         this.renderer.setSize(this.width, this.height);
-        this.renderer.domElement.style.width = '100%';
-        this.renderer.domElement.style.height = '100%';
+        this.renderer.domElement.style.position = 'fixed';
+        this.renderer.domElement.style.left = '0';
+        this.renderer.domElement.style.top = '0';
+        this.renderer.domElement.style.width = '100vw';
+        this.renderer.domElement.style.height = '100vh';
         this.renderer.domElement.style.display = 'block';
         this.clock = new THREE.Clock();
         this.clock.start();
@@ -140,21 +143,19 @@ export default function LiquidEther({
       }
       init(container) {
         this.container = container;
-        container.addEventListener('mousemove', this._onMouseMove, false);
-        container.addEventListener('touchstart', this._onTouchStart, false);
-        container.addEventListener('touchmove', this._onTouchMove, false);
-        container.addEventListener('mouseenter', this._onMouseEnter, false);
-        container.addEventListener('mouseleave', this._onMouseLeave, false);
-        container.addEventListener('touchend', this._onTouchEnd, false);
+        // listen on window so cursor is tracked across full viewport
+        window.addEventListener('mousemove', this._onMouseMove, false);
+        window.addEventListener('touchstart', this._onTouchStart, false);
+        window.addEventListener('touchmove', this._onTouchMove, false);
+        window.addEventListener('touchend', this._onTouchEnd, false);
       }
       dispose() {
-        if (!this.container) return;
-        this.container.removeEventListener('mousemove', this._onMouseMove, false);
-        this.container.removeEventListener('touchstart', this._onTouchStart, false);
-        this.container.removeEventListener('touchmove', this._onTouchMove, false);
-        this.container.removeEventListener('mouseenter', this._onMouseEnter, false);
-        this.container.removeEventListener('mouseleave', this._onMouseLeave, false);
-        this.container.removeEventListener('touchend', this._onTouchEnd, false);
+        if (typeof window !== 'undefined') {
+          window.removeEventListener('mousemove', this._onMouseMove, false);
+          window.removeEventListener('touchstart', this._onTouchStart, false);
+          window.removeEventListener('touchmove', this._onTouchMove, false);
+          window.removeEventListener('touchend', this._onTouchEnd, false);
+        }
       }
       setCoords(x, y) {
         if (!this.container) return;
@@ -828,11 +829,8 @@ export default function LiquidEther({
         }
       }
       update() {
-        if (this.options.isBounce) {
-          this.boundarySpace.set(0, 0);
-        } else {
-          this.boundarySpace.copy(this.cellScale);
-        }
+        // remove margins at edges for full-bleed render
+        this.boundarySpace.set(0, 0);
         this.advection.update({
           dt: this.options.dt,
           isBounce: this.options.isBounce,

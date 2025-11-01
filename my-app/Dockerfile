@@ -3,11 +3,9 @@ FROM node:20-alpine
 
 # Accept build arguments
 ARG VITE_API_URL
-ARG VITE_REDIRECT_URL
 
 # Set as environment variables for build
 ENV VITE_API_URL=$VITE_API_URL
-ENV VITE_REDIRECT_URL=$VITE_REDIRECT_URL
 
 WORKDIR /app
 

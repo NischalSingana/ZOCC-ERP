@@ -1,7 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* Base styles and root sizing */
 html, body, #root {
   height: 100%;
   margin: 0;
+}
+
+/* Professional typography with Inter and Plus Jakarta Sans */
+* {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6, .heading-font {
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
 }
 
 /* Optional: smooth fonts */
@@ -10,6 +23,24 @@ body {
   color: #eaeaea;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'kern' 1, 'liga' 1, 'calt' 1;
+  text-rendering: optimizeLegibility;
+  letter-spacing: -0.01em;
+}
+
+/* Custom Tailwind components */
+@layer components {
+  .dashboard-card {
+    @apply bg-gradient-to-br from-zocc-blue-900/50 to-zocc-blue-800/30 backdrop-blur-sm border border-zocc-blue-700/30 rounded-xl p-6 shadow-xl;
+  }
+  
+  .dashboard-card:hover {
+    @apply border-zocc-blue-500/50 shadow-2xl shadow-zocc-blue-500/10 transition-all duration-300;
+  }
+  
+  .glow-effect {
+    @apply shadow-lg shadow-zocc-blue-500/20;
+  }
 }
 
 

@@ -1,6 +1,6 @@
 .captcha-container {
   width: 100%;
-  margin-top: 15px;
+  margin-top: 10px;
 }
 
 .captcha-display {
@@ -12,9 +12,9 @@
 
 .captcha-canvas {
   flex: 1;
-  height: 55px;
+  height: 48px;
   border: 2px solid #1d4ed8;
-  border-radius: 8px;
+  border-radius: 12px;
   background: #0b1220;
   cursor: pointer;
   transition: border-color 0.3s;
@@ -27,7 +27,7 @@
 .captcha-refresh {
   background: transparent;
   border: 2px solid #2563eb;
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 8px;
   cursor: pointer;
   display: flex;
@@ -35,6 +35,8 @@
   justify-content: center;
   transition: all 0.3s;
   flex-shrink: 0;
+  width: 48px;
+  height: 48px;
 }
 
 .captcha-refresh:hover {
@@ -52,19 +54,20 @@
 
 .captcha-input {
   flex: 1;
-  height: 42px;
+  height: 48px;
   background: transparent;
   border: 2px solid #2563eb;
-  border-radius: 8px;
-  padding: 0 14px;
-  font-size: 16px;
-  font-weight: 600;
-  letter-spacing: 3px;
+  border-radius: 12px;
+  padding: 0 16px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 4px;
   text-transform: uppercase;
   text-align: center;
   color: #fff;
   outline: none;
   transition: all 0.3s;
+  font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
 .captcha-input:focus {
@@ -78,9 +81,11 @@
 }
 
 .captcha-error {
-  margin-top: 8px;
-  font-size: 12px;
+  margin-top: 12px;
+  font-size: 14px;
   color: #f87171;
   text-align: center;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
 }
 

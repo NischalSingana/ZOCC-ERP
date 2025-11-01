@@ -1,12 +1,12 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import './Login.css'
 import Captcha from './Captcha.jsx'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
-const REDIRECT_URL = 'https://zeroonelearning.vercel.app/'
-
 export default function Login() {
+  const navigate = useNavigate()
   const [active, setActive] = useState(false)
   const [loginUser, setLoginUser] = useState('')
   const [loginPass, setLoginPass] = useState('')
@@ -89,8 +89,8 @@ export default function Login() {
                     localStorage.setItem('authToken', data.token)
                     localStorage.setItem('user', JSON.stringify(data.user))
                     
-                    // Redirect to ZeroOne Learning
-                    window.location.href = REDIRECT_URL
+                    // Redirect to Dashboard
+                    navigate('/dashboard')
                     
                   } catch (err) {
                     if (err.name === 'TypeError' && err.message.includes('fetch')) {
@@ -314,8 +314,8 @@ export default function Login() {
                     localStorage.setItem('authToken', data.token)
                     localStorage.setItem('user', JSON.stringify(data.user))
                     
-                    // Redirect to ZeroOne Learning
-                    window.location.href = REDIRECT_URL
+                    // Redirect to Dashboard
+                    navigate('/dashboard')
                     
                   } catch (err) {
                     if (err.name === 'TypeError' && err.message.includes('fetch')) {

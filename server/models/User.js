@@ -1,15 +1,20 @@
 import mongoose from 'mongoose';
 
 const userSchema = new mongoose.Schema({
-  username: {
+  studentFullName: {
+    type: String,
+    required: false, // Will be set during registration
+    trim: true,
+    minlength: 2,
+    maxlength: 100
+  },
+  idNumber: {
     type: String,
     required: false, // Will be set during registration
     trim: true,
     unique: true,
     sparse: true, // Allows multiple null/undefined values
-    lowercase: true,
-    minlength: 3,
-    maxlength: 30
+    match: [/^\d{10}$/, 'ID number must be exactly 10 digits']
   },
   email: {
     type: String,
@@ -41,7 +46,7 @@ const userSchema = new mongoose.Schema({
 
 // Create indexes for faster queries
 userSchema.index({ email: 1 });
-userSchema.index({ username: 1 });
+userSchema.index({ idNumber: 1 });
 
 const User = mongoose.models.User || mongoose.model('User', userSchema);
 

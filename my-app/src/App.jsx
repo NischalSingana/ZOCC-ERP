@@ -21,7 +21,14 @@ function App() {
             <div style={{ position: 'relative', height: '100vh', width: '100%', background: 'transparent' }}>
               <header className="app-header">
                 <img src={navLogo} alt="Title" className="app-logo" />
-                <img src={sacLogo} alt="SAC" className="app-logo-right" />
+                <a 
+                  href="https://sac.kluniversity.in/" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  style={{ display: 'inline-block' }}
+                >
+                  <img src={sacLogo} alt="SAC" className="app-logo-right" />
+                </a>
               </header>
               <LiquidEther />
               <Login />

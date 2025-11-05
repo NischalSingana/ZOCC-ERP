@@ -6,7 +6,7 @@ import {
   FileText, 
   FolderKanban, 
   Megaphone, 
-  Trophy,
+  BookOpen,
   User,
   Menu,
   X,
@@ -24,11 +24,11 @@ const DashboardLayout = ({ children }) => {
 
   const menuItems = [
     { icon: LayoutDashboard, label: 'Overview', path: '/dashboard' },
+    { icon: BookOpen, label: 'Sessions', path: '/dashboard/sessions' },
     { icon: CalendarCheck, label: 'Attendance', path: '/dashboard/attendance' },
     { icon: FileText, label: 'Submissions', path: '/dashboard/submissions' },
     { icon: FolderKanban, label: 'Projects', path: '/dashboard/projects' },
     { icon: Megaphone, label: 'Announcements', path: '/dashboard/announcements' },
-    { icon: Trophy, label: 'Leaderboard', path: '/dashboard/leaderboard' },
     { icon: User, label: 'Profile', path: '/dashboard/profile' },
   ];
 

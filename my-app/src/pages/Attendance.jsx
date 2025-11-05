@@ -1,31 +1,71 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CalendarCheck, CheckCircle, XCircle, Clock, TrendingUp } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+
 const Attendance = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('month');
+  const [attendanceData, setAttendanceData] = useState([]);
+  const [recentSessions, setRecentSessions] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock data
-  const attendanceData = [
-    { date: '2024-01', present: 12, absent: 2 },
-    { date: '2024-02', present: 15, absent: 1 },
-    { date: '2024-03', present: 13, absent: 3 },
-    { date: '2024-04', present: 14, absent: 2 },
-    { date: '2024-05', present: 16, absent: 0 },
-    { date: '2024-06', present: 14, absent: 1 },
-  ];
+  useEffect(() => {
+    fetchAttendance();
+  }, []);
 
-  const recentSessions = [
-    { title: 'React Advanced Patterns', date: '2024-01-10', status: 'present', trainer: 'John Doe' },
-    { title: 'Database Design', date: '2024-01-08', status: 'present', trainer: 'Jane Smith' },
-    { title: 'API Development', date: '2024-01-05', status: 'absent', trainer: 'Mike Johnson' },
-    { title: 'Git Workflow', date: '2024-01-03', status: 'present', trainer: 'Sarah Lee' },
-    { title: 'Docker Basics', date: '2024-01-01', status: 'present', trainer: 'Alex Brown' },
-  ];
+  const fetchAttendance = async () => {
+    try {
+      const token = localStorage.getItem('authToken');
+      const res = await fetch(`${API_URL}/api/attendance`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setRecentSessions(data.attendance || []);
+        
+        // Process attendance data for charts
+        const processedData = processAttendanceData(data.attendance || []);
+        setAttendanceData(processedData);
+      }
+    } catch (error) {
+      console.error('Error fetching attendance:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const processAttendanceData = (sessions) => {
+    // Group by month
+    const monthlyData = {};
+    sessions.forEach(session => {
+      const month = session.date.substring(0, 7); // YYYY-MM
+      if (!monthlyData[month]) {
+        monthlyData[month] = { date: month, present: 0, absent: 0 };
+      }
+      if (session.status === 'present') {
+        monthlyData[month].present++;
+      } else {
+        monthlyData[month].absent++;
+      }
+    });
+    
+    return Object.values(monthlyData).sort((a, b) => a.date.localeCompare(b.date));
+  };
 
   const totalSessions = recentSessions.length;
   const presentCount = recentSessions.filter(s => s.status === 'present').length;
-  const attendanceRate = ((presentCount / totalSessions) * 100).toFixed(1);
+  const attendanceRate = totalSessions > 0 ? ((presentCount / totalSessions) * 100).toFixed(1) : 0;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-zocc-blue-300">Loading attendance data...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -66,47 +106,49 @@ const Attendance = () => {
       </div>
 
       {/* Chart */}
-      <div className="dashboard-card">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2">
-            <CalendarCheck className="text-zocc-blue-400" size={24} />
-            <h2 className="text-xl font-semibold text-white">Attendance Trend</h2>
+      {attendanceData.length > 0 && (
+        <div className="dashboard-card">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-2">
+              <CalendarCheck className="text-zocc-blue-400" size={24} />
+              <h2 className="text-xl font-semibold text-white">Attendance Trend</h2>
+            </div>
+            <div className="flex gap-2">
+              {['week', 'month', 'year'].map((period) => (
+                <button
+                  key={period}
+                  onClick={() => setSelectedPeriod(period)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    selectedPeriod === period
+                      ? 'bg-zocc-blue-600 text-white'
+                      : 'bg-zocc-blue-800/30 text-zocc-blue-300 hover:bg-zocc-blue-800/50'
+                  }`}
+                >
+                  {period.toUpperCase()}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="flex gap-2">
-            {['week', 'month', 'year'].map((period) => (
-              <button
-                key={period}
-                onClick={() => setSelectedPeriod(period)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                  selectedPeriod === period
-                    ? 'bg-zocc-blue-600 text-white'
-                    : 'bg-zocc-blue-800/30 text-zocc-blue-300 hover:bg-zocc-blue-800/50'
-                }`}
-              >
-                {period.toUpperCase()}
-              </button>
-            ))}
-          </div>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={attendanceData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1e3a5f" />
+              <XAxis dataKey="date" stroke="#93c5fd" />
+              <YAxis stroke="#93c5fd" />
+              <Tooltip 
+                contentStyle={{ 
+                  backgroundColor: '#0b2447', 
+                  border: '1px solid #1e4d8b',
+                  borderRadius: '8px',
+                  color: '#fff'
+                }}
+              />
+              <Legend wrapperStyle={{ color: '#fff' }} />
+              <Line type="monotone" dataKey="present" stroke="#10b981" strokeWidth={2} dot={{ fill: '#10b981' }} name="Present" />
+              <Line type="monotone" dataKey="absent" stroke="#ef4444" strokeWidth={2} dot={{ fill: '#ef4444' }} name="Absent" />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
-        <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={attendanceData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1e3a5f" />
-            <XAxis dataKey="date" stroke="#93c5fd" />
-            <YAxis stroke="#93c5fd" />
-            <Tooltip 
-              contentStyle={{ 
-                backgroundColor: '#0b2447', 
-                border: '1px solid #1e4d8b',
-                borderRadius: '8px',
-                color: '#fff'
-              }}
-            />
-            <Legend wrapperStyle={{ color: '#fff' }} />
-            <Line type="monotone" dataKey="present" stroke="#10b981" strokeWidth={2} dot={{ fill: '#10b981' }} name="Present" />
-            <Line type="monotone" dataKey="absent" stroke="#ef4444" strokeWidth={2} dot={{ fill: '#ef4444' }} name="Absent" />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
+      )}
 
       {/* Recent Sessions Table */}
       <div className="dashboard-card">
@@ -114,45 +156,60 @@ const Attendance = () => {
           <Clock className="text-zocc-blue-400" size={24} />
           <h2 className="text-xl font-semibold text-white">Recent Sessions</h2>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-zocc-blue-700/30">
-                <th className="text-left py-3 px-4 text-sm font-semibold text-zocc-blue-300">Session</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-zocc-blue-300">Date</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-zocc-blue-300">Trainer</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-zocc-blue-300">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentSessions.map((session, idx) => (
-                <tr key={idx} className="border-b border-zocc-blue-700/10 hover:bg-zocc-blue-800/20 transition-colors">
-                  <td className="py-3 px-4 text-white font-medium">{session.title}</td>
-                  <td className="py-3 px-4 text-zocc-blue-300">{session.date}</td>
-                  <td className="py-3 px-4 text-zocc-blue-300">{session.trainer}</td>
-                  <td className="py-3 px-4">
-                    <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${
-                      session.status === 'present'
-                        ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                        : 'bg-red-500/20 text-red-400 border border-red-500/30'
-                    }`}>
-                      {session.status === 'present' ? (
-                        <CheckCircle size={14} />
-                      ) : (
-                        <XCircle size={14} />
-                      )}
-                      {session.status.toUpperCase()}
-                    </span>
-                  </td>
+        {recentSessions.length === 0 ? (
+          <div className="text-center py-8 text-zocc-blue-300">
+            No attendance records found.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-zocc-blue-700/30">
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-zocc-blue-300">Session</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-zocc-blue-300">Date</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-zocc-blue-300">Trainer</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-zocc-blue-300">Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {recentSessions.slice(0, 10).map((session, idx) => (
+                  <tr key={session.sessionId || idx} className="border-b border-zocc-blue-700/10 hover:bg-zocc-blue-800/20 transition-colors">
+                    <td className="py-3 px-4 text-white font-medium">{session.title}</td>
+                    <td className="py-3 px-4 text-zocc-blue-300">
+                      {session.date ? new Date(session.date).toLocaleDateString('en-US', { 
+                        year: 'numeric', 
+                        month: 'short', 
+                        day: 'numeric' 
+                      }) : 'N/A'}
+                    </td>
+                    <td className="py-3 px-4 text-zocc-blue-300">{session.trainer || 'N/A'}</td>
+                    <td className="py-3 px-4">
+                      <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${
+                        session.status === 'present'
+                          ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                          : session.status === 'late'
+                          ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
+                          : session.status === 'excused'
+                          ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                          : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                      }`}>
+                        {session.status === 'present' ? (
+                          <CheckCircle size={14} />
+                        ) : (
+                          <XCircle size={14} />
+                        )}
+                        {session.status?.toUpperCase() || 'ABSENT'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
 export default Attendance;
-

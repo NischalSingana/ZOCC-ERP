@@ -33,6 +33,19 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  role: {
+    type: String,
+    enum: ['STUDENT', 'ADMIN'],
+    default: 'STUDENT'
+  },
+  phone: {
+    type: String,
+    trim: true
+  },
+  photo: {
+    type: String,
+    trim: true
+  },
   createdAt: {
     type: Date,
     default: Date.now

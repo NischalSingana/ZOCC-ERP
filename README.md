@@ -23,19 +23,6 @@ docker-compose up -d
 # Backend: http://localhost:4000
 ```
 
-### Deploy to Coolify
-
-See [COOLIFY_QUICKSTART.md](./COOLIFY_QUICKSTART.md) for deployment instructions.
-
-## Documentation
-
-- [DASHBOARD.md](./my-app/DASHBOARD.md) - Dashboard features and development guide
-- [COOLIFY_QUICKSTART.md](./COOLIFY_QUICKSTART.md) - Quick deployment guide for Coolify
-- [COOLIFY.md](./COOLIFY.md) - Comprehensive Coolify deployment guide
-- [DOCKER.md](./DOCKER.md) - Docker setup and configuration
-- [server/GMAIL_SETUP.md](./server/GMAIL_SETUP.md) - Gmail SMTP setup
-- [server/MONGODB_SETUP.md](./server/MONGODB_SETUP.md) - MongoDB setup
-
 ## Features
 
 - 🔐 Secure authentication with JWT
@@ -61,7 +48,7 @@ See [COOLIFY_QUICKSTART.md](./COOLIFY_QUICKSTART.md) for deployment instructions
 - **Backend**: Node.js + Express
 - **Database**: MongoDB
 - **Email**: Gmail SMTP
-- **Deployment**: Docker + Coolify
+- **Deployment**: Docker
 
 ## Environment Variables
 

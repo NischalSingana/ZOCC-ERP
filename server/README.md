@@ -25,8 +25,8 @@ MONGODB_URI=mongodb+srv://username:password@cluster0.xxxxx.mongodb.net/zocc_erp?
 ```
 
 **Important:**
-- **Gmail:** Use Gmail App Password (not regular password). See `GMAIL_SETUP.md`
-- **MongoDB:** Get connection string from MongoDB Atlas or use local MongoDB. See `MONGODB_SETUP.md`
+- **Gmail:** Use Gmail App Password (not regular password). Enable 2-Step Verification and generate an App Password from Google Account settings.
+- **MongoDB:** Get connection string from MongoDB Atlas or use local MongoDB.
 
 3. Install dependencies:
 ```bash

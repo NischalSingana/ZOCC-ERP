@@ -17,9 +17,9 @@ h1, h2, h3, h4, h5, h6, .heading-font {
   font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
 }
 
-/* Optional: smooth fonts */
+/* Clean, modern dark theme with visible text */
 body {
-  background-color: #0b0d12;
+  background-color: #0a0a0a;
   color: #eaeaea;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -31,11 +31,11 @@ body {
 /* Custom Tailwind components */
 @layer components {
   .dashboard-card {
-    @apply bg-gradient-to-br from-zocc-blue-900/50 to-zocc-blue-800/30 backdrop-blur-sm border border-zocc-blue-700/30 rounded-xl p-6 shadow-xl;
+    @apply bg-primary-900 rounded-xl p-6 shadow-sm border border-primary-800 hover:shadow-md transition-all duration-300;
   }
   
   .dashboard-card:hover {
-    @apply border-zocc-blue-500/50 shadow-2xl shadow-zocc-blue-500/10 transition-all duration-300;
+    @apply border-zocc-blue-600 shadow-lg transition-all duration-300;
   }
   
   .glow-effect {

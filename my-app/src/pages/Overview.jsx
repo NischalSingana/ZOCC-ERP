@@ -103,7 +103,7 @@ const Overview = () => {
                 </div>
                 <span className="text-green-400 text-sm font-medium">{stat.change}</span>
               </div>
-              <h3 className="text-sm text-zocc-blue-300 mb-1">{stat.title}</h3>
+              <h3 className="text-sm text-primary-400 mb-1">{stat.title}</h3>
               <p className="text-3xl font-bold text-white">{stat.value}</p>
             </div>
           );
@@ -122,20 +122,20 @@ const Overview = () => {
             {upcomingSessions.map((session, idx) => (
               <div 
                 key={idx} 
-                className="bg-zocc-blue-800/30 rounded-lg p-4 border border-zocc-blue-700/30 hover:border-zocc-blue-500/50 transition-all"
+                className="bg-primary-800/50 rounded-lg p-4 border border-primary-700 hover:border-zocc-blue-600 transition-all"
               >
                 <div className="flex items-start justify-between mb-2">
                   <h3 className="text-white font-medium">{session.title}</h3>
-                  <span className="text-xs px-2 py-1 bg-zocc-blue-600/50 rounded text-zocc-blue-200">
+                  <span className="text-xs px-2 py-1 bg-zocc-blue-900/50 text-zocc-blue-300 rounded font-medium">
                     {session.type}
                   </span>
                 </div>
-                <div className="flex items-center gap-4 text-sm text-zocc-blue-300">
+                <div className="flex items-center gap-4 text-sm text-primary-300">
                   <span>{session.date}</span>
                   <span>•</span>
                   <span>{session.time}</span>
                 </div>
-                <p className="text-sm text-zocc-blue-400 mt-2">
+                <p className="text-sm text-primary-400 mt-2">
                   Trainer: {session.trainer}
                 </p>
               </div>
@@ -159,15 +159,15 @@ const Overview = () => {
               return (
                 <div 
                   key={idx} 
-                  className={`border-l-4 rounded-lg p-4 ${priorityColors[announcement.priority]} bg-zocc-blue-800/30 hover:bg-zocc-blue-800/50 transition-all cursor-pointer`}
+                  className={`border-l-4 rounded-lg p-4 ${priorityColors[announcement.priority]} hover:bg-opacity-20 transition-all cursor-pointer`}
                 >
                   <div className="flex items-start justify-between mb-2">
                     <h3 className="text-white font-medium">{announcement.title}</h3>
-                    <span className="text-xs px-2 py-1 bg-zocc-blue-600/50 rounded text-zocc-blue-200 uppercase">
+                    <span className="text-xs px-2 py-1 bg-primary-800 text-primary-300 rounded uppercase font-medium">
                       {announcement.priority}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-zocc-blue-300">
+                  <div className="flex items-center gap-2 text-sm text-primary-400">
                     <span>{announcement.author}</span>
                     <span>•</span>
                     <span>{announcement.date}</span>

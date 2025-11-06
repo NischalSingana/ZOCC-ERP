@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, Shield } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
 import './Login.css'
 import Captcha from './Captcha.jsx'
 
@@ -8,7 +9,9 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
 export default function Login() {
   const navigate = useNavigate()
+  const { login } = useAuth()
   const [active, setActive] = useState(false)
+  const [isAdminMode, setIsAdminMode] = useState(false)
   const [loginEmail, setLoginEmail] = useState('')
   const [loginPass, setLoginPass] = useState('')
   const [showLoginPass, setShowLoginPass] = useState(false)
@@ -46,13 +49,32 @@ export default function Login() {
   const [forgotPasswordError, setForgotPasswordError] = useState('')
 
   return (
-    <div className={`animated-auth ${active ? 'active' : ''}`}>
+    <div className={`animated-auth ${active ? 'active' : ''} ${isAdminMode ? 'admin-mode' : ''}`}>
+      {/* Admin Icon Button - Bottom Right (near SAC logo area) */}
+      <button
+        onClick={() => {
+          setIsAdminMode(!isAdminMode)
+          setActive(false) // Close registration if open
+        }}
+        className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-gradient-to-r from-zocc-blue-600 to-zocc-blue-500 text-white rounded-full shadow-2xl shadow-zocc-blue-500/50 hover:from-zocc-blue-500 hover:to-zocc-blue-400 hover:scale-110 transition-all duration-300 flex items-center justify-center group"
+        title={isAdminMode ? "Switch to Student Login" : "Switch to Admin Login"}
+      >
+        <Shield size={24} className="text-white group-hover:rotate-12 transition-transform" />
+      </button>
+
       <div className="container">
         <div className="curved-shape"></div>
         <div className="curved-shape2"></div>
 
         <div className="form-box Login">
-          <h2 className="animation" style={{ ['--D']: 0, ['--S']: 21 }}>Login</h2>
+          {isAdminMode && (
+            <div className="animation text-center mb-2" style={{ ['--D']: 0, ['--S']: 20.5 }}>
+              <p className="text-zocc-blue-300 font-semibold text-lg">Admin Access</p>
+            </div>
+          )}
+          <h2 className="animation" style={{ ['--D']: 0, ['--S']: 21 }}>
+            {isAdminMode ? 'Admin Login' : 'Login'}
+          </h2>
           <form onSubmit={(e)=>e.preventDefault()}>
             <div className="input-box animation" style={{ ['--D']: 1, ['--S']: 22 }}>
               <input type="email" required value={loginEmail} onChange={e=>setLoginEmail(e.target.value)} />
@@ -85,62 +107,40 @@ export default function Login() {
               </a>
             </div>
 
-            <div className="animation" style={{ ['--D']: 3, ['--S']: 24 }}>
-              <Captcha onVerify={setCaptchaVerified} />
-            </div>
+            {!isAdminMode && (
+              <div className="animation" style={{ ['--D']: 3, ['--S']: 24 }}>
+                <Captcha onVerify={setCaptchaVerified} />
+              </div>
+            )}
 
             {loginError && (
-              <div className="otp-error animation" style={{ ['--D']: 3.5, ['--S']: 24.5 }}>
+              <div className="otp-error animation" style={{ ['--D']: isAdminMode ? 2.5 : 3.5, ['--S']: isAdminMode ? 23.5 : 24.5 }}>
                 {loginError}
               </div>
             )}
 
-            <div className="input-box animation" style={{ ['--D']: 4, ['--S']: 25 }}>
+            <div className="input-box animation" style={{ ['--D']: isAdminMode ? 3 : 4, ['--S']: isAdminMode ? 24 : 25 }}>
               <button 
                 className="btn" 
                 type="submit" 
-                disabled={!captchaVerified || loginLoading}
+                disabled={(!isAdminMode && !captchaVerified) || loginLoading}
                 onClick={async (e) => {
                   e.preventDefault()
-                  if (!captchaVerified || !loginEmail || !loginPass) return
+                  if ((!isAdminMode && !captchaVerified) || !loginEmail || !loginPass) return
                   
                   setLoginLoading(true)
                   setLoginError('')
                   
                   try {
-                    const res = await fetch(`${API_URL}/api/auth/login`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ 
-                        email: loginEmail.toLowerCase().trim(), 
-                        password: loginPass 
-                      })
-                    })
-                    
-                    const data = await res.json().catch(() => ({}))
-                    
-                    if (!res.ok) {
-                      throw new Error(data.error || data.message || `Login failed: ${res.status}`)
+                    const result = await login(loginEmail.toLowerCase().trim(), loginPass)
+                    if (result.success) {
+                      navigate('/dashboard')
+                    } else {
+                      setLoginError(result.error || 'Login failed. Please check your credentials.')
                     }
-                    
-                    if (!data.token || !data.user) {
-                      throw new Error('Invalid response from server')
-                    }
-                    
-                    // Store token in localStorage
-                    localStorage.setItem('authToken', data.token)
-                    localStorage.setItem('user', JSON.stringify(data.user))
-                    
-                    // Redirect to Dashboard after successful login
-                    navigate('/dashboard')
-                    
                   } catch (err) {
                     console.error('Login error:', err)
-                    if (err.name === 'TypeError' && err.message.includes('fetch')) {
-                      setLoginError(`Connection failed. Is the server running on ${API_URL}?`)
-                    } else {
-                      setLoginError(err.message || 'Login failed. Please check your credentials.')
-                    }
+                    setLoginError(err.message || 'Login failed. Please check your credentials.')
                   } finally {
                     setLoginLoading(false)
                   }
@@ -150,20 +150,35 @@ export default function Login() {
               </button>
             </div>
 
-            <div className="regi-link animation" style={{ ['--D']: 5, ['--S']: 26 }}>
-              <p>Don't have an account? <br/> <a href="#" className="SignUpLink" onClick={(e)=>{e.preventDefault(); setActive(true)}}>Sign Up</a></p>
-            </div>
+            {!isAdminMode && (
+              <div className="regi-link animation" style={{ ['--D']: 5, ['--S']: 26 }}>
+                <p>Don't have an account? <br/> <a href="#" className="SignUpLink" onClick={(e)=>{e.preventDefault(); setActive(true)}}>Sign Up</a></p>
+              </div>
+            )}
           </form>
         </div>
 
         <div className="info-content Login">
-          <p className="animation" style={{ ['--D']: 1, ['--S']: 21 }}>
-  Welcome back to the ZeroOne Coding Club ERP Portal. Great to see you again. Let's continue building, learning, and innovating together!
-</p>
+          {isAdminMode ? (
+            <>
+              <h2 className="animation" style={{ ['--D']: 1, ['--S']: 21 }}>
+                Admin Access
+              </h2>
+              <p className="animation" style={{ ['--D']: 1.2, ['--S']: 21.2 }}>
+                Welcome to the Admin Dashboard. Please login with your admin credentials to manage students, sessions, and system settings.
+              </p>
+            </>
+          ) : (
+            <p className="animation" style={{ ['--D']: 1, ['--S']: 21 }}>
+              Welcome back to the ZeroOne Coding Club ERP Portal. Great to see you again. Let's continue building, learning, and innovating together!
+            </p>
+          )}
         </div>
 
-        <div className="form-box Register">
-          <h2 className="animation" style={{ ['--li']: 17, ['--S']: 0 }}>Register</h2>
+        {/* Registration Form - Available for students */}
+        {!isAdminMode && (
+          <div className="form-box Register">
+            <h2 className="animation" style={{ ['--li']: 17, ['--S']: 0 }}>Register</h2>
           <form onSubmit={(e)=>e.preventDefault()}>
             <div className="input-box animation" style={{ ['--li']: 18, ['--S']: 1 }}>
               <input 
@@ -464,12 +479,16 @@ export default function Login() {
               <p>Already have an account? <br/> <a href="#" className="SignInLink" onClick={(e)=>{e.preventDefault(); setActive(false)}}>Sign In</a></p>
             </div>
           </form>
-        </div>
+          </div>
+        )}
 
-        <div className="info-content Register">
-          <h2 className="animation" style={{ ['--li']: 17, ['--S']: 0 }}>Welcome to ZeroOne Club!</h2>
-          <p className="animation" style={{ ['--li']: 18, ['--S']: 1 }}>Please register using your KL mail ID.</p>
-        </div>
+        {/* Registration Info Content */}
+        {!isAdminMode && (
+          <div className="info-content Register">
+            <h2 className="animation" style={{ ['--li']: 17, ['--S']: 0 }}>Welcome to ZeroOne Club!</h2>
+            <p className="animation" style={{ ['--li']: 18, ['--S']: 1 }}>Please register using your KL mail ID.</p>
+          </div>
+        )}
       </div>
 
       {/* Forgot Password Modal */}

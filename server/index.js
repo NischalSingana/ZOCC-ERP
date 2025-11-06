@@ -23,6 +23,7 @@ console.log('  - SMTP_PASS:', process.env.SMTP_PASS ? `Set (${process.env.SMTP_P
 console.log('  - MONGODB_URI:', process.env.MONGODB_URI ? 'Set' : 'NOT SET');
 console.log('  - PORT:', process.env.PORT || '4000 (default)');
 console.log('  - CORS_ORIGIN:', process.env.CORS_ORIGIN || 'http://localhost:5173 (default)');
+console.log('  - ADMIN_EMAILS:', process.env.ADMIN_EMAILS ? `Set (${process.env.ADMIN_EMAILS.split(',').length} admin(s))` : 'NOT SET - No admin access!');
 
 // Connect to MongoDB
 connectDB();
@@ -385,6 +386,11 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
+// Admin email whitelist from environment variable
+const ADMIN_EMAILS = process.env.ADMIN_EMAILS 
+  ? process.env.ADMIN_EMAILS.split(',').map(email => email.toLowerCase().trim())
+  : [];
+
 // Login endpoint
 app.post('/api/auth/login', async (req, res) => {
   try {
@@ -397,18 +403,43 @@ app.post('/api/auth/login', async (req, res) => {
     // Normalize email
     const normalizedEmail = email.toLowerCase().trim();
 
+    // Check if email is in admin whitelist
+    const isAdminEmail = ADMIN_EMAILS.includes(normalizedEmail);
+
     // Find user by email - don't use lean() to get Mongoose document with methods
-    const user = await User.findOne({
+    let user = await User.findOne({
       email: normalizedEmail
     });
 
+    // If admin email and user doesn't exist, create admin user
+    if (!user && isAdminEmail) {
+      // Hash password for new admin user
+      const saltRounds = 10;
+      const hashedPassword = await bcrypt.hash(password, saltRounds);
+      
+      // Create admin user
+      user = await User.create({
+        email: normalizedEmail,
+        password: hashedPassword,
+        role: 'ADMIN',
+        emailVerified: true, // Auto-verify admin emails
+        studentFullName: 'Admin User',
+      });
+    }
+
+    // If user doesn't exist and not in admin whitelist, deny access
+    if (!user && !isAdminEmail) {
+      return res.status(401).json({ error: 'Invalid email or password. Access is restricted. Please contact admin.' });
+    }
+    
+    // If user doesn't exist but is admin email, it will be created above
     if (!user) {
-      return res.status(401).json({ error: 'Invalid email or password' });
+      return res.status(401).json({ error: 'Invalid email or password. Access is restricted.' });
     }
 
     // Check if user has a password set
     if (!user.password) {
-      return res.status(401).json({ error: 'Account not fully set up. Please complete registration.' });
+      return res.status(401).json({ error: 'Account not fully set up. Please contact admin.' });
     }
 
     // Check password - handle bcrypt errors gracefully
@@ -426,9 +457,21 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    // Check if email is verified
-    if (!user.emailVerified) {
+    // For admin emails, ensure role is set to ADMIN
+    if (isAdminEmail && user.role !== 'ADMIN') {
+      user.role = 'ADMIN';
+      await user.save();
+    }
+
+    // Check if email is verified (skip for admin emails, they're auto-verified)
+    if (!user.emailVerified && !isAdminEmail) {
       return res.status(403).json({ error: 'Please verify your email before logging in' });
+    }
+
+    // Only allow login if user is admin (from whitelist) or already exists in database (created by admin)
+    // This ensures only admins can login via whitelist, others must be created by admin
+    if (!isAdminEmail && !user.emailVerified) {
+      return res.status(403).json({ error: 'Account not verified. Please contact admin for access.' });
     }
 
     // Generate JWT token
@@ -450,7 +493,8 @@ app.post('/api/auth/login', async (req, res) => {
         id: user._id,
         studentFullName: user.studentFullName,
         idNumber: user.idNumber,
-        email: user.email
+        email: user.email,
+        role: user.role || 'STUDENT'
       }
     });
   } catch (error) {
@@ -1281,6 +1325,260 @@ app.get('/test-email', async (req, res) => {
         '4. Make sure SMTP_USER is your full Gmail address'
       ]
     });
+  }
+});
+
+// ========== ADMIN ROUTES ==========
+
+// Get all users/students endpoint (for admin)
+app.get('/api/users/all', authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId);
+    if (!user || user.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
+    const students = await User.find({ role: 'STUDENT' })
+      .select('-password')
+      .sort({ createdAt: -1 });
+    
+    res.json({
+      success: true,
+      students,
+    });
+  } catch (error) {
+    console.error('Error fetching students:', error);
+    res.status(500).json({ error: 'Failed to fetch students' });
+  }
+});
+
+// Get single user by ID (for admin or self)
+app.get('/api/users/:id', authenticateToken, async (req, res) => {
+  try {
+    const requestingUser = await User.findById(req.userId);
+    const targetUser = await User.findById(req.params.id).select('-password');
+    
+    if (!targetUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Only allow admin or the user themselves
+    if (requestingUser.role !== 'ADMIN' && requestingUser._id.toString() !== req.params.id) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    
+    res.json({
+      success: true,
+      user: targetUser,
+    });
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    res.status(500).json({ error: 'Failed to fetch user' });
+  }
+});
+
+// Update user (for admin or self)
+app.put('/api/users/:id', authenticateToken, async (req, res) => {
+  try {
+    const requestingUser = await User.findById(req.userId);
+    const targetUser = await User.findById(req.params.id);
+    
+    if (!targetUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Only allow admin or the user themselves
+    if (requestingUser.role !== 'ADMIN' && requestingUser._id.toString() !== req.params.id) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    
+    const { studentFullName, email, phone } = req.body;
+    
+    if (studentFullName) targetUser.studentFullName = studentFullName;
+    if (email && requestingUser.role === 'ADMIN') targetUser.email = email.toLowerCase();
+    if (phone !== undefined) targetUser.phone = phone || null;
+    
+    await targetUser.save();
+    
+    res.json({
+      success: true,
+      message: 'User updated successfully',
+      user: {
+        id: targetUser._id,
+        studentFullName: targetUser.studentFullName,
+        email: targetUser.email,
+        phone: targetUser.phone,
+        idNumber: targetUser.idNumber,
+        role: targetUser.role,
+        emailVerified: targetUser.emailVerified,
+      },
+    });
+  } catch (error) {
+    console.error('Error updating user:', error);
+    res.status(500).json({ error: 'Failed to update user' });
+  }
+});
+
+// Reset student password (admin only)
+app.post('/api/admin/students/:id/reset-password', authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId);
+    if (!user || user.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
+    const student = await User.findById(req.params.id);
+    if (!student) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+    
+    // Generate temporary password
+    const tempPassword = Math.random().toString(36).slice(-8);
+    const hashedPassword = await bcrypt.hash(tempPassword, 10);
+    
+    student.password = hashedPassword;
+    await student.save();
+    
+    res.json({
+      success: true,
+      message: 'Password reset successfully. Student should use forgot password to set a new one.',
+    });
+  } catch (error) {
+    console.error('Error resetting password:', error);
+    res.status(500).json({ error: 'Failed to reset password' });
+  }
+});
+
+// Update submission status (admin only)
+app.put('/api/submissions/:id', authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId);
+    if (!user || user.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
+    const { status, feedback } = req.body;
+    
+    const submission = await Submission.findById(req.params.id);
+    if (!submission) {
+      return res.status(404).json({ error: 'Submission not found' });
+    }
+    
+    if (status) submission.status = status;
+    if (feedback !== undefined) submission.feedback = feedback;
+    submission.reviewedAt = new Date();
+    submission.reviewedBy = req.userId;
+    
+    await submission.save();
+    
+    res.json({
+      success: true,
+      message: 'Submission updated successfully',
+      submission,
+    });
+  } catch (error) {
+    console.error('Error updating submission:', error);
+    res.status(500).json({ error: 'Failed to update submission' });
+  }
+});
+
+// Delete session (admin only)
+app.delete('/api/sessions/:id', authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId);
+    if (!user || user.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
+    const session = await Session.findByIdAndDelete(req.params.id);
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Session deleted successfully',
+    });
+  } catch (error) {
+    console.error('Error deleting session:', error);
+    res.status(500).json({ error: 'Failed to delete session' });
+  }
+});
+
+// Update session (admin only)
+app.put('/api/sessions/:id', authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId);
+    if (!user || user.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
+    const session = await Session.findById(req.params.id);
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+    
+    const { title, description, date, startTime, endTime, venue, trainer, maxSeats, joinLink, status } = req.body;
+    
+    if (title) session.title = title;
+    if (description) session.description = description;
+    if (date) session.date = new Date(date);
+    if (startTime) session.startTime = new Date(startTime);
+    if (endTime) session.endTime = new Date(endTime);
+    if (venue) session.venue = venue;
+    if (trainer !== undefined) session.trainer = trainer;
+    if (maxSeats !== undefined) session.maxSeats = maxSeats;
+    if (joinLink !== undefined) session.joinLink = joinLink;
+    if (status) session.status = status;
+    
+    await session.save();
+    
+    res.json({
+      success: true,
+      message: 'Session updated successfully',
+      session,
+    });
+  } catch (error) {
+    console.error('Error updating session:', error);
+    res.status(500).json({ error: 'Failed to update session' });
+  }
+});
+
+// Create session (admin only)
+app.post('/api/sessions', authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId);
+    if (!user || user.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
+    const { title, description, date, startTime, endTime, venue, trainer, maxSeats, joinLink, status } = req.body;
+    
+    if (!title || !description || !date || !venue) {
+      return res.status(400).json({ error: 'Title, description, date, and venue are required' });
+    }
+    
+    const session = await Session.create({
+      title,
+      description,
+      date: new Date(date),
+      startTime: startTime ? new Date(startTime) : null,
+      endTime: endTime ? new Date(endTime) : null,
+      venue,
+      trainer: trainer || null,
+      maxSeats: maxSeats || 50,
+      joinLink: joinLink || null,
+      status: status || 'scheduled',
+    });
+    
+    res.json({
+      success: true,
+      message: 'Session created successfully',
+      session,
+    });
+  } catch (error) {
+    console.error('Error creating session:', error);
+    res.status(500).json({ error: 'Failed to create session' });
   }
 });
 

@@ -5,6 +5,7 @@ import nodemailer from 'nodemailer';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
+import mongoose from 'mongoose';
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import connectDB from './db/connect.js';
 import Otp from './models/Otp.js';
@@ -26,7 +27,16 @@ console.log('  - CORS_ORIGIN:', process.env.CORS_ORIGIN || 'http://localhost:517
 console.log('  - ADMIN_EMAILS:', process.env.ADMIN_EMAILS ? `Set (${process.env.ADMIN_EMAILS.split(',').length} admin(s))` : 'NOT SET - No admin access!');
 
 // Connect to MongoDB
-connectDB();
+let dbConnected = false;
+connectDB()
+  .then(() => {
+    dbConnected = true;
+    console.log('✅ Database connection established');
+  })
+  .catch((error) => {
+    console.error('❌ Failed to connect to database:', error);
+    dbConnected = false;
+  });
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -37,20 +47,32 @@ app.use(express.urlencoded({ extended: true }));
 // Enhanced CORS configuration
 const allowedOrigins = process.env.CORS_ORIGIN 
   ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
-  : ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:3000'];
+  : ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:3000', 'http://localhost:4173'];
+
+console.log('🌐 CORS allowed origins:', allowedOrigins);
 
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (mobile apps, curl, Postman, etc.)
-    if (!origin) return callback(null, true);
+    if (!origin) {
+      console.log('✅ CORS: Allowing request with no origin');
+      return callback(null, true);
+    }
     
-    // In production, allow all origins if CORS_ORIGIN includes '*' or is not set
-    // Otherwise, check against allowed origins
-    if (allowedOrigins.includes('*') || allowedOrigins.indexOf(origin) !== -1) {
+    // In development or if CORS_ORIGIN includes '*', allow all origins
+    if (process.env.NODE_ENV !== 'production' || allowedOrigins.includes('*')) {
+      console.log('✅ CORS: Allowing origin (dev mode or wildcard):', origin);
+      return callback(null, true);
+    }
+    
+    // Check against allowed origins
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      console.log('✅ CORS: Allowing origin (in allowed list):', origin);
       callback(null, true);
     } else {
-      // Log but allow anyway for flexibility
-      console.log('CORS request from origin:', origin);
+      // Log but allow anyway for flexibility in development
+      console.log('⚠️  CORS: Request from unlisted origin (allowing anyway):', origin);
+      console.log('   Allowed origins:', allowedOrigins);
       callback(null, true);
     }
   },
@@ -111,6 +133,13 @@ transporter.verify((error) => {
 // Request OTP endpoint
 app.post('/api/auth/request-otp', async (req, res) => {
   try {
+    // Check database connection
+    if (!dbConnected || mongoose.connection.readyState !== 1) {
+      return res.status(503).json({ 
+        error: 'Database not connected. Please check server logs.' 
+      });
+    }
+
     const { email } = req.body;
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -118,10 +147,15 @@ app.post('/api/auth/request-otp', async (req, res) => {
     }
 
     // Check if OTP already exists and is still valid in MongoDB
-    const existingOtp = await Otp.findOne({ 
-      email: email.toLowerCase(),
-      expiresAt: { $gt: new Date() }
-    });
+    const existingOtp = await Promise.race([
+      Otp.findOne({ 
+        email: email.toLowerCase(),
+        expiresAt: { $gt: new Date() }
+      }),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Database query timeout')), 10000)
+      )
+    ]);
     
     if (existingOtp) {
       const timeLeft = Math.ceil((existingOtp.expiresAt - Date.now()) / 1000);
@@ -134,15 +168,25 @@ app.post('/api/auth/request-otp', async (req, res) => {
     const expiresAt = new Date(Date.now() + OTP_TTL_MS);
 
     // Delete any old OTPs for this email
-    await Otp.deleteMany({ email: email.toLowerCase() });
+    await Promise.race([
+      Otp.deleteMany({ email: email.toLowerCase() }),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Database query timeout')), 10000)
+      )
+    ]);
 
     // Save new OTP to MongoDB
-    await Otp.create({
-      email: email.toLowerCase(),
-      otp,
-      expiresAt,
-      attempts: 0
-    });
+    await Promise.race([
+      Otp.create({
+        email: email.toLowerCase(),
+        otp,
+        expiresAt,
+        attempts: 0
+      }),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Database query timeout')), 10000)
+      )
+    ]);
 
     // Send email using nodemailer with Gmail
     const mailOptions = {
@@ -196,8 +240,13 @@ app.post('/api/auth/request-otp', async (req, res) => {
       `
     };
 
-    // Send email using nodemailer
-    const info = await transporter.sendMail(mailOptions);
+    // Send email using nodemailer with timeout
+    const info = await Promise.race([
+      transporter.sendMail(mailOptions),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('SMTP timeout')), 15000)
+      )
+    ]);
     
     console.log('OTP email sent successfully:', {
       messageId: info.messageId,
@@ -1276,7 +1325,12 @@ app.get('/api/files/:filePath(*)', async (req, res) => {
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok' });
+  const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
+  res.json({ 
+    status: 'ok',
+    database: dbStatus,
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Test Gmail connection endpoint

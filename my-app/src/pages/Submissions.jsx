@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Upload, Eye, CheckCircle, Clock, XCircle, Loader, FileText, Image as ImageIcon } from 'lucide-react';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+import { API_URL } from '../utils/apiUrl';
 
 const Submissions = () => {
   const [uploadModalOpen, setUploadModalOpen] = useState(false);

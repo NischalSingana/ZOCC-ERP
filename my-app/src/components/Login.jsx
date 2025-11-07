@@ -4,8 +4,7 @@ import { Eye, EyeOff, Shield } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import './Login.css'
 import Captcha from './Captcha.jsx'
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+import { API_URL } from '../utils/apiUrl'
 
 export default function Login() {
   const navigate = useNavigate()

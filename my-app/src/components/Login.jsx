@@ -6,6 +6,27 @@ import './Login.css'
 import Captcha from './Captcha.jsx'
 import { API_URL } from '../utils/apiUrl'
 
+// Helper function to fetch with timeout
+const fetchWithTimeout = async (url, options = {}, timeout = 30000) => {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeout)
+  
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    })
+    clearTimeout(timeoutId)
+    return response
+  } catch (error) {
+    clearTimeout(timeoutId)
+    if (error.name === 'AbortError') {
+      throw new Error('Request timeout. The server is taking too long to respond.')
+    }
+    throw error
+  }
+}
+
 export default function Login() {
   const navigate = useNavigate()
   const { login } = useAuth()
@@ -244,7 +265,7 @@ export default function Login() {
                     setOtpLoading(true)
                     setOtpError('')
                     try {
-                      const res = await fetch(`${API_URL}/api/auth/request-otp`, {
+                      const res = await fetchWithTimeout(`${API_URL}/api/auth/request-otp`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ email: regEmail })
@@ -304,7 +325,7 @@ export default function Login() {
                       setOtpLoading(true)
                       setOtpError('')
                       try {
-                        const res = await fetch(`${API_URL}/api/auth/verify-otp`, {
+                        const res = await fetchWithTimeout(`${API_URL}/api/auth/verify-otp`, {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({ email: regEmail, otp })
@@ -420,7 +441,7 @@ export default function Login() {
                   setRegisterError('')
                   
                   try {
-                    const res = await fetch(`${API_URL}/api/auth/register`, {
+                    const res = await fetchWithTimeout(`${API_URL}/api/auth/register`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ 
@@ -549,7 +570,7 @@ export default function Login() {
                           setForgotPasswordError('')
                           
                           try {
-                            const res = await fetch(`${API_URL}/api/auth/forgot-password`, {
+                            const res = await fetchWithTimeout(`${API_URL}/api/auth/forgot-password`, {
                               method: 'POST',
                               headers: { 'Content-Type': 'application/json' },
                               body: JSON.stringify({ usernameOrEmail: forgotUsernameOrEmail })
@@ -617,7 +638,7 @@ export default function Login() {
                           setForgotPasswordError('')
                           
                           try {
-                            const res = await fetch(`${API_URL}/api/auth/verify-reset-otp`, {
+                            const res = await fetchWithTimeout(`${API_URL}/api/auth/verify-reset-otp`, {
                               method: 'POST',
                               headers: { 'Content-Type': 'application/json' },
                               body: JSON.stringify({ 
@@ -731,7 +752,7 @@ export default function Login() {
                       setForgotPasswordError('')
                       
                       try {
-                        const res = await fetch(`${API_URL}/api/auth/reset-password`, {
+                        const res = await fetchWithTimeout(`${API_URL}/api/auth/reset-password`, {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({ 

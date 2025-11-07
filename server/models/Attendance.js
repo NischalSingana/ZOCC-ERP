@@ -4,14 +4,12 @@ const attendanceSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
-    index: true
+    required: true
   },
   sessionId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Session',
-    required: true,
-    index: true
+    required: true
   },
   status: {
     type: String,
@@ -33,12 +31,10 @@ const attendanceSchema = new mongoose.Schema({
 });
 
 // Create indexes for faster queries
-attendanceSchema.index({ userId: 1, sessionId: 1 });
+// Compound unique index prevents duplicate attendance records for same user and session
+attendanceSchema.index({ userId: 1, sessionId: 1 }, { unique: true });
 attendanceSchema.index({ sessionId: 1, status: 1 });
 attendanceSchema.index({ userId: 1, status: 1 });
-
-// Prevent duplicate attendance records for same user and session
-attendanceSchema.index({ userId: 1, sessionId: 1 }, { unique: true });
 
 const Attendance = mongoose.models.Attendance || mongoose.model('Attendance', attendanceSchema);
 

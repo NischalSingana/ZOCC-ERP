@@ -5,8 +5,7 @@ const otpSchema = new mongoose.Schema({
     type: String,
     required: true,
     lowercase: true,
-    trim: true,
-    index: true
+    trim: true
   },
   otp: {
     type: String,
@@ -34,7 +33,8 @@ const otpSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Create index for faster lookups
+// Create compound index for faster lookups (covers email queries via leftmost prefix)
+// TTL index on expiresAt is already defined in the schema for auto-deletion
 otpSchema.index({ email: 1, expiresAt: 1 });
 
 const Otp = mongoose.models.Otp || mongoose.model('Otp', otpSchema);

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Calendar, MapPin, Clock, Users, BookOpen, ChevronRight } from 'lucide-react';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+import { API_URL } from '../utils/apiUrl';
 
 const Sessions = () => {
   const [sessions, setSessions] = useState([]);

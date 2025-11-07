@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { CalendarCheck, CheckCircle, XCircle, Clock, TrendingUp } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+import { API_URL } from '../utils/apiUrl';
 
 const Attendance = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('month');

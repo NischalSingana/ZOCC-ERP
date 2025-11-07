@@ -85,35 +85,35 @@ function generateOTP() {
   ).join('');
 }
 
-// Gmail SMTP transporter
+// Outlook/Office365 SMTP transporter
 const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
+  host: 'smtp.office365.com',
   port: 587,
   secure: false, // true for 465, false for other ports
   auth: {
     user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS // Gmail App Password
+    pass: process.env.SMTP_PASS // Outlook password or app password
   },
   tls: {
     rejectUnauthorized: false
   }
 });
 
-// Verify Gmail SMTP connection on startup
+// Verify Outlook SMTP connection on startup
 transporter.verify((error) => {
   if (error) {
-    console.error('\n❌ Gmail SMTP connection error:');
+    console.error('\n❌ Outlook SMTP connection error:');
     console.error('Error code:', error.code);
     console.error('Error message:', error.message);
     console.error('\n📋 Troubleshooting steps:');
-    console.error('1. Make sure 2-Step Verification is ENABLED in your Google Account');
-    console.error('2. Generate an App Password (not your regular password)');
-    console.error('3. App Password steps: Google Account → Security → 2-Step Verification → App Passwords');
-    console.error('4. Use the 16-character App Password (no spaces) in SMTP_PASS');
-    console.error('5. Make sure SMTP_USER is your full Gmail address (e.g., yourname@gmail.com)');
+    console.error('1. Make sure SMTP_USER is your full Outlook/Office365 email (e.g., yourname@outlook.com)');
+    console.error('2. Use your Outlook password or App Password in SMTP_PASS');
+    console.error('3. If 2FA is enabled, generate an App Password from Microsoft Account Security');
+    console.error('4. App Password steps: Microsoft Account → Security → Advanced security options → App passwords');
+    console.error('5. Make sure "Less secure app access" is enabled if using regular password');
     console.error('\n');
   } else {
-    console.log('✅ Gmail SMTP server ready');
+    console.log('✅ Outlook SMTP server ready');
     console.log('📧 Connected to:', process.env.SMTP_USER);
   }
 });
@@ -182,7 +182,7 @@ app.post('/api/auth/request-otp', async (req, res) => {
       )
     ]);
 
-    // Send email using nodemailer with Gmail
+    // Send email using nodemailer with Outlook
     const mailOptions = {
       from: `"ZeroOne Coding Club" <${process.env.SMTP_USER}>`,
       to: email,
@@ -261,14 +261,14 @@ app.post('/api/auth/request-otp', async (req, res) => {
     // Handle specific nodemailer errors
     if (error.code === 'EAUTH' || error.responseCode === 535) {
       return res.status(500).json({ 
-        error: 'Gmail authentication failed. Please verify:\n' +
-               '1. 2-Step Verification is enabled\n' +
-               '2. You are using an App Password (not your regular password)\n' +
-               '3. Your email and App Password are correct in .env file'
+        error: 'Outlook authentication failed. Please verify:\n' +
+               '1. Your email and password are correct\n' +
+               '2. If 2FA is enabled, use an App Password\n' +
+               '3. Check your SMTP credentials in environment variables'
       });
     }
     if (error.code === 'ECONNECTION' || error.code === 'ETIMEDOUT') {
-      return res.status(500).json({ error: 'Connection to Gmail server failed. Please check your internet connection.' });
+      return res.status(500).json({ error: 'Connection to Outlook server failed. Please check your internet connection.' });
     }
     if (error.code === 'EENVELOPE') {
       return res.status(400).json({ error: 'Invalid email address format.' });
@@ -1336,7 +1336,7 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Test Gmail connection endpoint
+// Test Outlook connection endpoint
 app.get('/test-email', async (req, res) => {
   // Debug: Check what's loaded from .env
   const envCheck = {
@@ -1359,7 +1359,7 @@ app.get('/test-email', async (req, res) => {
         '1. Make sure .env file is in the server/ directory',
         '2. Check .env file has SMTP_USER and SMTP_PASS (no quotes)',
         '3. Restart server after changing .env file',
-        '4. Format: SMTP_USER=your-email@gmail.com (no spaces around =)'
+        '4. Format: SMTP_USER=your-email@outlook.com (no spaces around =)'
       ]
     });
   }
@@ -1368,24 +1368,137 @@ app.get('/test-email', async (req, res) => {
     await transporter.verify();
     res.json({ 
       success: true, 
-      message: 'Gmail SMTP connection successful!',
+      message: 'Outlook SMTP connection successful!',
       email: process.env.SMTP_USER 
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      error: 'Gmail SMTP connection failed',
+      error: 'Outlook SMTP connection failed',
       details: {
         code: error.code,
         message: error.message,
         response: error.response
       },
       troubleshooting: [
-        '1. Enable 2-Step Verification in your Google Account',
-        '2. Generate an App Password at: myaccount.google.com/apppasswords',
-        '3. Use the 16-character App Password (no spaces)',
-        '4. Make sure SMTP_USER is your full Gmail address'
+        '1. Make sure SMTP_USER is your full Outlook/Office365 email',
+        '2. Use your Outlook password or App Password in SMTP_PASS',
+        '3. If 2FA is enabled, generate an App Password from Microsoft Account',
+        '4. Check Microsoft Account Security settings'
       ]
+    });
+  }
+});
+
+// Send test email endpoint
+app.post('/test-email-send', async (req, res) => {
+  const { to } = req.body;
+  const testEmail = to || process.env.SMTP_USER;
+
+  if (!testEmail) {
+    return res.status(400).json({ 
+      error: 'Email address required. Send "to" in request body or set SMTP_USER in env.' 
+    });
+  }
+
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    return res.status(500).json({ 
+      error: 'SMTP credentials not configured. Set SMTP_USER and SMTP_PASS in environment variables.' 
+    });
+  }
+
+  try {
+    const testOTP = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    const mailOptions = {
+      from: `"ZeroOne Coding Club" <${process.env.SMTP_USER}>`,
+      to: testEmail,
+      subject: '🧪 Test Email - ZeroOne Coding Club ERP',
+      text: `This is a test email from ZeroOne Coding Club ERP.\n\nTest OTP: ${testOTP}\n\nIf you received this email, your Outlook SMTP configuration is working correctly!`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #0b1220;">
+          <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+            <div style="text-align: center; margin-bottom: 40px;">
+              <h1 style="color: #4f9cff; margin: 0; font-size: 32px; font-weight: bold;">ZeroOne Coding Club</h1>
+              <p style="color: #60a5fa; margin: 8px 0 0 0; font-size: 18px;">ERP Portal - Test Email</p>
+            </div>
+            
+            <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 30px; border-radius: 12px; margin: 20px 0; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);">
+              <p style="margin: 0 0 20px 0; font-size: 18px; color: #fff; text-align: center;">✅ Test Email Successful!</p>
+              
+              <div style="background: #0b1220; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0; border: 2px solid rgba(79, 156, 255, 0.3);">
+                <p style="color: #4f9cff; font-size: 16px; margin: 0;">Test OTP Code:</p>
+                <h2 style="color: #4f9cff; font-size: 36px; letter-spacing: 8px; margin: 10px 0 0 0; font-weight: bold; font-family: 'Courier New', monospace;">${testOTP}</h2>
+              </div>
+              
+              <p style="margin: 20px 0 0 0; font-size: 14px; color: #e0e0e0; text-align: center;">
+                If you received this email, your Outlook SMTP configuration is working correctly! 🎉
+              </p>
+            </div>
+            
+            <div style="background: rgba(16, 185, 129, 0.1); padding: 20px; border-radius: 8px; margin-top: 30px; border-left: 4px solid #10b981;">
+              <p style="margin: 0; font-size: 14px; color: #888; line-height: 1.6;">
+                <strong>Note:</strong> This is a test email sent from your ERP backend server. 
+                Your email configuration is working properly.
+              </p>
+            </div>
+            
+            <div style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+              <p style="margin: 0; font-size: 12px; color: #666;">
+                © ${new Date().getFullYear()} ZeroOne Coding Club. All rights reserved.
+              </p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `
+    };
+
+    const info = await Promise.race([
+      transporter.sendMail(mailOptions),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('SMTP timeout')), 15000)
+      )
+    ]);
+
+    console.log('✅ Test email sent successfully:', {
+      messageId: info.messageId,
+      to: testEmail,
+      timestamp: new Date().toISOString()
+    });
+
+    res.json({ 
+      success: true, 
+      message: 'Test email sent successfully!',
+      to: testEmail,
+      messageId: info.messageId,
+      testOTP: testOTP
+    });
+  } catch (error) {
+    console.error('❌ Test email error:', error);
+    
+    let errorMessage = 'Failed to send test email.';
+    if (error.code === 'EAUTH' || error.responseCode === 535) {
+      errorMessage = 'Outlook authentication failed. Check your SMTP credentials.';
+    } else if (error.code === 'ECONNECTION' || error.code === 'ETIMEDOUT') {
+      errorMessage = 'Connection to Outlook server failed.';
+    } else if (error.message === 'SMTP timeout') {
+      errorMessage = 'SMTP request timed out.';
+    }
+
+    res.status(500).json({
+      success: false,
+      error: errorMessage,
+      details: {
+        code: error.code,
+        message: error.message
+      }
     });
   }
 });

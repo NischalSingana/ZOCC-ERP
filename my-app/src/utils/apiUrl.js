@@ -22,3 +22,8 @@ export const getApiUrl = () => {
 // Export the API URL as a constant
 export const API_URL = getApiUrl();
 
+// Log the API URL in development for debugging
+if (import.meta.env.DEV) {
+  console.log('🔗 API URL:', API_URL);
+}
+

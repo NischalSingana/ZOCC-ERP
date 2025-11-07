@@ -8,6 +8,7 @@ const axiosInstance = axios.create({
     'Content-Type': 'application/json',
   },
   withCredentials: false, // Set to true if using cookies
+  timeout: 30000, // 30 seconds timeout
 });
 
 // Request interceptor - add auth token
@@ -45,7 +46,17 @@ axiosInstance.interceptors.response.use(
         toast.error(data.error);
       }
     } else if (error.request) {
-      toast.error('Network error. Please check your connection.');
+      // Request was made but no response received
+      if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+        toast.error('Request timeout. The server is taking too long to respond.');
+      } else {
+        toast.error('Network error. Please check your connection and ensure the server is running.');
+      }
+      console.error('Network error details:', {
+        message: error.message,
+        code: error.code,
+        apiUrl: API_URL,
+      });
     } else {
       toast.error('An unexpected error occurred.');
     }

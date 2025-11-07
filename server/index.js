@@ -44,37 +44,25 @@ const PORT = process.env.PORT || 4000;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Enhanced CORS configuration
+// Enhanced CORS configuration - Allow all origins for now
 const allowedOrigins = process.env.CORS_ORIGIN 
   ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
   : ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:3000', 'http://localhost:4173'];
 
-console.log('🌐 CORS allowed origins:', allowedOrigins);
+console.log('🌐 CORS allowed origins from env:', allowedOrigins);
+console.log('🌐 NODE_ENV:', process.env.NODE_ENV);
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, curl, Postman, etc.)
+    // ALWAYS allow all origins for now - CORS is not the issue
+    // The timeout is likely due to database or SMTP issues
     if (!origin) {
-      console.log('✅ CORS: Allowing request with no origin');
       return callback(null, true);
     }
     
-    // In development or if CORS_ORIGIN includes '*', allow all origins
-    if (process.env.NODE_ENV !== 'production' || allowedOrigins.includes('*')) {
-      console.log('✅ CORS: Allowing origin (dev mode or wildcard):', origin);
-      return callback(null, true);
-    }
-    
-    // Check against allowed origins
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      console.log('✅ CORS: Allowing origin (in allowed list):', origin);
-      callback(null, true);
-    } else {
-      // Log but allow anyway for flexibility in development
-      console.log('⚠️  CORS: Request from unlisted origin (allowing anyway):', origin);
-      console.log('   Allowed origins:', allowedOrigins);
-      callback(null, true);
-    }
+    // Log the origin for debugging
+    console.log('✅ CORS: Allowing origin:', origin);
+    callback(null, true);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
@@ -132,9 +120,15 @@ transporter.verify((error) => {
 
 // Request OTP endpoint
 app.post('/api/auth/request-otp', async (req, res) => {
+  console.log('📧 OTP request received:', { email: req.body?.email, timestamp: new Date().toISOString() });
+  
   try {
     // Check database connection
-    if (!dbConnected || mongoose.connection.readyState !== 1) {
+    const dbState = mongoose.connection.readyState;
+    console.log('🔍 Database state:', dbState, '(0=disconnected, 1=connected, 2=connecting, 3=disconnecting)');
+    
+    if (!dbConnected || dbState !== 1) {
+      console.error('❌ Database not connected!', { dbConnected, dbState });
       return res.status(503).json({ 
         error: 'Database not connected. Please check server logs.' 
       });
@@ -1321,6 +1315,15 @@ app.get('/api/files/:filePath(*)', async (req, res) => {
       res.status(500).json({ error: 'Failed to serve file' });
     }
   }
+});
+
+// Simple test endpoint (no database required)
+app.get('/test', (req, res) => {
+  res.json({ 
+    status: 'ok',
+    message: 'Backend is responding!',
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Health check

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import axiosInstance from '../../api/axiosConfig';
 import Table from '../../components/Table';
 import toast from 'react-hot-toast';
-import { Calendar, Users, Upload, CheckCircle, XCircle } from 'lucide-react';
+import { Calendar, Users, Upload, CheckCircle, XCircle, Clock } from 'lucide-react';
 
 const AttendanceAdmin = () => {
   const [sessions, setSessions] = useState([]);
@@ -37,27 +37,33 @@ const AttendanceAdmin = () => {
 
   const fetchAttendance = async (sessionId) => {
     try {
-      // Fetch attendance for the selected session
-      // This would need a specific API endpoint
-      toast.success('Attendance loaded');
+      setLoading(true);
+      const response = await axiosInstance.get(`/api/admin/sessions/${sessionId}/attendance`);
+      if (response.data?.success) {
+        setAttendance(response.data.attendance || []);
+      } else {
+        toast.error('Failed to load attendance');
+      }
     } catch (error) {
       console.error('Error fetching attendance:', error);
-      toast.error('Failed to load attendance');
+      toast.error(error.response?.data?.error || 'Failed to load attendance');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleMarkAttendance = async (studentId, status) => {
     try {
       await axiosInstance.post('/api/attendance', {
-        sessionId: selectedSession.id,
-        studentId,
-        status,
+        sessionId: selectedSession.id || selectedSession._id,
+        userId: studentId,
+        status: status.toLowerCase(),
       });
-      toast.success('Attendance marked');
-      fetchAttendance(selectedSession.id);
+      toast.success('Attendance marked successfully');
+      fetchAttendance(selectedSession.id || selectedSession._id);
     } catch (error) {
       console.error('Error marking attendance:', error);
-      toast.error('Failed to mark attendance');
+      toast.error(error.response?.data?.error || 'Failed to mark attendance');
     }
   };
 
@@ -73,17 +79,24 @@ const AttendanceAdmin = () => {
     {
       key: 'status',
       header: 'Status',
-      render: (item) => (
-        <span
-          className={`px-2 py-1 rounded text-xs ${
-            item.status === 'PRESENT'
-              ? 'bg-green-500/20 text-green-400'
-              : 'bg-red-500/20 text-red-400'
-          }`}
-        >
-          {item.status || 'NOT_MARKED'}
-        </span>
-      ),
+      render: (item) => {
+        const status = item.status?.toUpperCase() || 'ABSENT';
+        return (
+          <span
+            className={`px-2 py-1 rounded text-xs ${
+              status === 'PRESENT'
+                ? 'bg-green-500/20 text-green-400'
+                : status === 'LATE'
+                ? 'bg-yellow-500/20 text-yellow-400'
+                : status === 'EXCUSED'
+                ? 'bg-blue-500/20 text-blue-400'
+                : 'bg-red-500/20 text-red-400'
+            }`}
+          >
+            {status}
+          </span>
+        );
+      },
     },
     {
       key: 'actions',
@@ -91,16 +104,32 @@ const AttendanceAdmin = () => {
       render: (item) => (
         <div className="flex gap-2">
           <button
-            onClick={() => handleMarkAttendance(item.userId, 'PRESENT')}
+            onClick={() => handleMarkAttendance(item.userId, 'present')}
             className="p-2 hover:bg-green-900/20 rounded-lg transition-colors"
+            title="Mark Present"
           >
             <CheckCircle size={18} className="text-green-400" />
           </button>
           <button
-            onClick={() => handleMarkAttendance(item.userId, 'ABSENT')}
+            onClick={() => handleMarkAttendance(item.userId, 'absent')}
             className="p-2 hover:bg-red-900/20 rounded-lg transition-colors"
+            title="Mark Absent"
           >
             <XCircle size={18} className="text-red-400" />
+          </button>
+          <button
+            onClick={() => handleMarkAttendance(item.userId, 'late')}
+            className="p-2 hover:bg-yellow-900/20 rounded-lg transition-colors"
+            title="Mark Late"
+          >
+            <Clock size={18} className="text-yellow-400" />
+          </button>
+          <button
+            onClick={() => handleMarkAttendance(item.userId, 'excused')}
+            className="p-2 hover:bg-blue-900/20 rounded-lg transition-colors"
+            title="Mark Excused"
+          >
+            <CheckCircle size={18} className="text-blue-400" />
           </button>
         </div>
       ),
@@ -134,17 +163,17 @@ const AttendanceAdmin = () => {
             <div className="space-y-2 max-h-96 overflow-y-auto">
               {sessions.map((session) => (
                 <button
-                  key={session.id}
+                  key={session.id || session._id}
                   onClick={() => setSelectedSession(session)}
                   className={`w-full text-left p-4 rounded-lg transition-all ${
-                    selectedSession?.id === session.id
+                    (selectedSession?.id || selectedSession?._id) === (session.id || session._id)
                       ? 'bg-zocc-blue-600 border-2 border-zocc-blue-500'
                       : 'bg-zocc-blue-800/30 border border-zocc-blue-700/30 hover:bg-zocc-blue-800/50'
                   }`}
                 >
                   <h3 className="text-white font-medium">{session.title}</h3>
                   <p className="text-sm text-zocc-blue-300">
-                    {new Date(session.date).toLocaleDateString()}
+                    {session.date ? new Date(session.date).toLocaleDateString() : 'N/A'}
                   </p>
                 </button>
               ))}
@@ -161,7 +190,7 @@ const AttendanceAdmin = () => {
               <Table
                 data={attendance}
                 columns={columns}
-                keyExtractor={(item) => item.userId}
+                keyExtractor={(item) => item.userId || item._id}
                 emptyMessage="No attendance records found"
               />
             </div>

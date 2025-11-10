@@ -8,23 +8,19 @@
   overflow-y: auto; 
 }
 .animated-auth * { box-sizing: border-box; }
-
 .animated-auth .container{ 
   position: relative; 
   width: 750px; 
   max-width: 92vw; 
   height: 520px; 
-  border: 1px solid #374151; 
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5); 
+  border: 2px solid #1d4ed8; 
+  box-shadow: 0 0 25px rgba(37,99,235,0.55); 
   overflow: hidden; 
   border-radius: 16px; 
-  background: #111827; 
+  background: #0b1220; 
   scrollbar-width: thin;
-  scrollbar-color: rgba(0, 105, 229, 0.3) transparent;
-  transition: all 0.3s ease;
+  scrollbar-color: rgba(79, 156, 255, 0.3) transparent;
 }
-
-/* Admin Mode Styling - Removed purple gradient, keeping default blue styling */
 
 .animated-auth .form-box{ 
   position: absolute; 
@@ -39,8 +35,8 @@
   overflow-y: auto;
   overflow-x: hidden;
   scroll-behavior: smooth;
-  padding-top: 15px;
-  padding-bottom: 15px;
+  padding-top: 20px;
+  padding-bottom: 20px;
 }
 .animated-auth .form-box.Login{ 
   left: 0; 
@@ -69,37 +65,41 @@
 }
 
 .animated-auth .form-box h2{ 
-  font-size: 28px; 
+  font-size: 38px; 
   text-align: center; 
-  margin-bottom: 18px; 
+  margin-bottom: 24px; 
   margin-top: 0;
   font-weight: 800;
   letter-spacing: -1px;
-  color: #ffffff;
+  color: #fff;
   font-family: 'Plus Jakarta Sans', sans-serif;
   line-height: 1.2;
+  background: linear-gradient(135deg, #ffffff 0%, #e0e7ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 .animated-auth .form-box .input-box{ 
   position: relative; 
   width: 100%; 
   height: 56px; 
-  margin-top: 14px; 
+  margin-top: 18px; 
   flex-shrink: 0;
 }
 .animated-auth .input-box input{ 
   width: 100%; 
   height: 100%; 
-  background: transparent !important; 
-  border: none !important; 
+  background: rgba(2, 6, 23, 0.6) !important; 
+  border: 1px solid #334155 !important; 
   outline: none; 
   font-size: 16px; 
   color: #ffffff; 
   font-weight: 500; 
-  border-bottom: 2px solid #4b5563; 
-  padding-left: 0;
-  padding-right: 35px; 
-  padding-top: 8px;
-  transition: all 0.3s ease; 
+  border-radius: 12px; 
+  padding-left: 14px;
+  padding-right: 40px; 
+  padding-top: 22px; /* more room so label can sit lower by default */
+  transition: border-color .2s ease, box-shadow .2s ease; 
   position: relative;
   z-index: 15;
   cursor: text;
@@ -108,6 +108,7 @@
   -moz-appearance: none;
   appearance: none;
   letter-spacing: 0.01em;
+  box-shadow: inset 0 0 0 0 rgba(59, 130, 246, 0);
 }
 
 /* Extra padding for password inputs with toggle */
@@ -127,51 +128,51 @@
 .animated-auth .input-box input:-webkit-autofill:hover,
 .animated-auth .input-box input:-webkit-autofill:focus,
 .animated-auth .input-box input:-webkit-autofill:active {
-  -webkit-box-shadow: 0 0 0 30px #111827 inset !important;
-  -webkit-text-fill-color: #ffffff !important;
+  -webkit-box-shadow: 0 0 0 30px #0b1220 inset !important;
+  -webkit-text-fill-color: #fff !important;
   background-color: transparent !important;
 }
 .animated-auth .input-box input:focus,
 .animated-auth .input-box input:valid { 
-  border-bottom: 2px solid #3b82f6; 
-  box-shadow: 0 1px 0 0 rgba(59, 130, 246, 0.3);
+  border-bottom: 2px solid #4f9cff; 
+  box-shadow: 0 1px 0 0 rgba(79, 156, 255, 0.2);
 }
 .animated-auth .input-box label{ 
   position: absolute; 
-  top: 50%; 
-  left: 0; 
-  transform: translateY(-50%); 
+  top: 22px; /* sit down inside the input by default */
+  left: 14px; 
+  transform: none; 
   font-size: 15px; 
   color: #9ca3af; 
-  transition: .5s; 
+  transition: top .18s cubic-bezier(.2,.8,.2,1), color .18s ease, font-size .18s ease; 
   pointer-events: none;
-  z-index: 2;
+  z-index: 16;
   font-family: 'Inter', sans-serif;
   font-weight: 500;
   letter-spacing: 0.02em;
   background: transparent;
-  max-width: calc(100% - 80px);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  padding: 0 4px;
 }
+
 .animated-auth .input-box input:focus ~ label,
 .animated-auth .input-box input:valid ~ label,
 .animated-auth .input-box input:not(:placeholder-shown) ~ label,
 .animated-auth .input-box input[value]:not([value=""]) ~ label,
 .animated-auth .input-box input:not([value=""]) ~ label{ 
-  top: -8px; 
-  color: #3b82f6 !important; 
-  font-size: 13px;
+  top: 6px; /* animate up on focus/typing */
+  color: #93c5fd !important; 
+  font-size: 12px;
   font-weight: 600;
-  max-width: 100%;
 }
+
+/* Show placeholder on focus so user can keep typing while label moves up */
+.animated-auth .input-box input:focus::placeholder { opacity: .7; }
 
 /* Hide placeholder when label is in default position to prevent overlap */
 .animated-auth .input-box input::placeholder {
   opacity: 0;
   transition: opacity 0.3s ease;
-  color: #6b7280;
+  color: rgba(255, 255, 255, 0.5);
 }
 
 /* Show placeholder when input is focused (label moved up) */
@@ -187,33 +188,9 @@
 /* Ensure label moves up when placeholder is present and input is focused */
 .animated-auth .input-box input:placeholder-shown:focus ~ label {
   top: -8px;
-  color: #3b82f6 !important;
+  color: #60a5fa;
   font-size: 13px;
   font-weight: 600;
-}
-
-/* Force ID Number label to match other labels */
-.animated-auth .input-box input[type="text"][placeholder*="ID"] ~ label {
-  color: #9ca3af;
-}
-
-.animated-auth .input-box input[type="text"][placeholder*="ID"]:not(:placeholder-shown) ~ label,
-.animated-auth .input-box input[type="text"][placeholder*="ID"]:valid ~ label,
-.animated-auth .input-box input[type="text"][placeholder*="ID"]:focus ~ label,
-.animated-auth .input-box input[type="text"][placeholder*="ID"][value]:not([value=""]) ~ label {
-  top: -8px !important;
-  color: #3b82f6 !important;
-  font-size: 13px !important;
-  font-weight: 600 !important;
-}
-
-/* Additional fix: when ID Number input has any value (React controlled input) */
-.animated-auth .input-box:has(input[type="text"][placeholder*="ID"]:not([value=""])) label,
-.animated-auth .input-box:has(input[type="text"][placeholder*="ID"][value]) label {
-  top: -8px !important;
-  color: #3b82f6 !important;
-  font-size: 13px !important;
-  font-weight: 600 !important;
 }
 .animated-auth .input-box box-icon{ 
   position: absolute; 
@@ -221,12 +198,12 @@
   right: 8px; 
   font-size: 18px; 
   transform: translateY(-50%); 
-  color: #9ca3af; 
+  color: #fff; 
   pointer-events: none;
   z-index: 1;
 }
 .animated-auth .input-box input:focus ~ box-icon,
-.animated-auth .input-box input:valid ~ box-icon{ color: #3b82f6; }
+.animated-auth .input-box input:valid ~ box-icon{ color: #60a5fa; }
 
 /* Password Toggle Button */
 .animated-auth .input-box .password-toggle {
@@ -237,7 +214,7 @@
   background: transparent;
   border: none;
   cursor: pointer;
-  color: #9ca3af;
+  color: rgba(255, 255, 255, 0.7);
   padding: 0;
   margin: 0;
   display: flex;
@@ -252,17 +229,17 @@
 }
 
 .animated-auth .input-box .password-toggle:hover {
-  color: #3b82f6;
+  color: #60a5fa;
 }
 
 .animated-auth .input-box .password-toggle:focus {
-  color: #3b82f6;
+  color: #60a5fa;
   outline: none;
 }
 
 .animated-auth .input-box input:focus ~ .password-toggle,
 .animated-auth .input-box input:valid ~ .password-toggle {
-  color: #3b82f6;
+  color: #60a5fa;
 }
 
 /* Adjust lock icon position when password toggle is present */
@@ -279,7 +256,7 @@
 }
 
 .forgot-password-link a {
-  color: #3b82f6;
+  color: rgba(79, 156, 255, 0.8);
   text-decoration: none;
   font-weight: 500;
   transition: color 0.3s ease;
@@ -295,12 +272,12 @@
   position: relative; 
   width: 100%; 
   height: 56px; 
-  background: #3b82f6; 
+  background: transparent; 
   border-radius: 14px; 
   cursor: pointer; 
   font-size: 16px; 
   font-weight: 700; 
-  border: 2px solid #3b82f6; 
+  border: 2px solid #2563eb; 
   overflow: hidden; 
   z-index: 1; 
   color: #fff; 
@@ -310,15 +287,24 @@
   font-family: 'Plus Jakarta Sans', sans-serif;
   letter-spacing: 0.02em;
 }
-.animated-auth .btn:hover{ 
-  background: #2563eb;
-  border-color: #2563eb;
+.animated-auth .btn::before{ 
+  content: ""; 
+  position: absolute; 
+  height: 300%; 
+  width: 100%; 
+  background: linear-gradient(#0b1220, #2563eb, #0b1220, #2563eb); 
+  top: -100%; 
+  left: 0; 
+  z-index: -1; 
+  transition: .5s ease; 
+}
+.animated-auth .btn:hover::before{ 
+  top: 0; 
 }
 .animated-auth .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  border-color: #4b5563;
-  background: #4b5563;
+  border-color: rgba(37, 99, 235, 0.5);
 }
 
 .animated-auth .regi-link{ 
@@ -329,18 +315,17 @@
   line-height: 1.8;
   font-family: 'Inter', sans-serif;
   font-weight: 400;
-  color: #9ca3af;
+  color: rgba(255, 255, 255, 0.9);
 }
 .animated-auth .regi-link a{ 
   text-decoration: none; 
-  color: #3b82f6; 
+  color: rgba(255, 255, 255, 0.65); 
   font-weight: 500; 
   font-size: 14px;
   transition: color 0.3s ease;
-  cursor: pointer;
 }
 .animated-auth .regi-link a:hover{ 
-  color: #60a5fa;
+  color: rgba(255, 255, 255, 0.85);
   text-decoration: underline; 
 }
 
@@ -452,18 +437,23 @@
   margin-bottom: 24px; 
   font-weight: 900;
   letter-spacing: 0.02em;
-  color: #ffffff;
+  color: #fff;
   font-family: 'Plus Jakarta Sans', sans-serif;
+  background: linear-gradient(135deg, #ffffff 0%, #c7d2fe 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   word-wrap: break-word;
   overflow-wrap: break-word;
 }
 .animated-auth .info-content p{ 
   font-size: 17px; 
   line-height: 1.55; 
-  color: #d1d5db;
+  color: #A8C7FF;
   font-weight: 500;
   font-family: 'Poppins', sans-serif;
   letter-spacing: 0.01em;
+  text-shadow: 0 2px 8px rgba(168, 199, 255, 0.3);
   padding: 0;
   margin: 0;
 }
@@ -477,9 +467,9 @@
 .animated-auth .info-content.Register .animation{ transform: translateX(-120%); transition: .7s ease; opacity: 0; filter: blur(10PX); transition-delay: calc(.1s * var(--S)); }
 .animated-auth.active .info-content.Register .animation{ transform: translateX(0%); opacity: 1; filter: blur(0); transition-delay: calc(.1s * var(--li)); }
 
-.animated-auth .curved-shape{ position: absolute; right: 0; top: -5px; height: 600px; width: 850px; background: linear-gradient(45deg, #1e3a8a, #1e40af); transform: rotate(10deg) skewY(40deg); transform-origin: bottom right; transition: 1.5s ease; transition-delay: 1.6s; }
+.animated-auth .curved-shape{ position: absolute; right: 0; top: -5px; height: 600px; width: 850px; background: linear-gradient(45deg, #0b1220, #1d4ed8); transform: rotate(10deg) skewY(40deg); transform-origin: bottom right; transition: 1.5s ease; transition-delay: 1.6s; }
 .animated-auth.active .curved-shape{ transform: rotate(0deg) skewY(0deg); transition-delay: .5s; }
-.animated-auth .curved-shape2{ position: absolute; left: 250px; top: 100%; height: 700px; width: 850px; background: #111827; border-top: 3px solid #3b82f6; transform: rotate(0deg) skewY(0deg); transform-origin: bottom left; transition: 1.5s ease; transition-delay: .5s; }
+.animated-auth .curved-shape2{ position: absolute; left: 250px; top: 100%; height: 700px; width: 850px; background: #0b1220; border-top: 3px solid #1d4ed8; transform: rotate(0deg) skewY(0deg); transform-origin: bottom left; transition: 1.5s ease; transition-delay: .5s; }
 .animated-auth.active .curved-shape2{ transform: rotate(-11deg) skewY(-41deg); transition-delay: 1.2s; }
 
 .cta {

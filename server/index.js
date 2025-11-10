@@ -593,15 +593,7 @@ app.post('/api/auth/reset-password', async (req, res) => {
 // Get all sessions
 app.get('/api/sessions', authenticateToken, async (req, res) => {
   try {
-    let sessions = await Session.find().sort({ date: 1, time: 1 });
-    if (sessions.length === 0) {
-      // Generate sample sessions if none exist
-      const sampleSessions = [
-        { title: 'React Fundamentals', description: 'Learn React basics', date: new Date(), time: '10:00', venue: 'Lab 1', trainer: 'Dr. Smith' },
-        { title: 'Node.js Advanced', description: 'Advanced Node.js concepts', date: new Date(Date.now() + 86400000), time: '14:00', venue: 'Lab 2', trainer: 'Prof. Johnson' }
-      ];
-      sessions = await Session.insertMany(sampleSessions);
-    }
+    const sessions = await Session.find().sort({ date: 1, time: 1 });
     res.json({ success: true, sessions });
   } catch (error) {
     console.error('Error fetching sessions:', error);
@@ -674,12 +666,18 @@ app.delete('/api/sessions/:id', authenticateToken, requireAdmin, async (req, res
 
 // ========== SUBMISSION ROUTES ==========
 
-// Get user submissions
+// Get user submissions (or all submissions for admin)
 app.get('/api/submissions', authenticateToken, async (req, res) => {
   try {
-    const submissions = await Submission.find({ userId: req.userId })
+    const user = await User.findById(req.userId);
+    const isAdmin = user && user.role === 'ADMIN';
+    
+    const query = isAdmin ? {} : { userId: req.userId };
+    const submissions = await Submission.find(query)
       .populate({ path: 'sessionId', select: 'title description date time venue trainer', model: 'Session' })
+      .populate({ path: 'userId', select: 'studentFullName email idNumber', model: 'User' })
       .sort({ submittedAt: -1 });
+    
     res.json({ success: true, submissions });
   } catch (error) {
     console.error('Error fetching submissions:', error);
@@ -766,7 +764,7 @@ app.post('/api/submissions', authenticateToken, upload.single('image'), async (r
       fileName: req.file.originalname,
       fileType,
       notes: notes || '',
-      status: 'pending'
+      status: 'PENDING'
     });
 
     await submission.populate({ path: 'sessionId', select: 'title description date time venue trainer', model: 'Session' });
@@ -786,11 +784,25 @@ app.put('/api/submissions/:id', authenticateToken, requireAdmin, async (req, res
       return res.status(404).json({ error: 'Submission not found' });
     }
     const { status, feedback } = req.body;
-    if (status) submission.status = status;
+    
+    // Normalize status to uppercase
+    if (status) {
+      const normalizedStatus = status.toUpperCase();
+      if (['PENDING', 'ACCEPTED', 'REJECTED'].includes(normalizedStatus)) {
+        submission.status = normalizedStatus;
+      } else {
+        return res.status(400).json({ error: 'Invalid status. Must be PENDING, ACCEPTED, or REJECTED' });
+      }
+    }
+    
     if (feedback !== undefined) submission.feedback = feedback;
     submission.reviewedAt = new Date();
     submission.reviewedBy = req.userId;
     await submission.save();
+    
+    await submission.populate({ path: 'sessionId', select: 'title description date time venue trainer', model: 'Session' });
+    await submission.populate({ path: 'userId', select: 'studentFullName email idNumber', model: 'User' });
+    
     res.json({ success: true, message: 'Submission updated successfully', submission });
   } catch (error) {
     console.error('Error updating submission:', error);
@@ -842,16 +854,30 @@ app.get('/api/attendance', authenticateToken, async (req, res) => {
   }
 });
 
-// Mark attendance
+// Mark attendance (user marks own, or admin marks for any user)
 app.post('/api/attendance', authenticateToken, async (req, res) => {
   try {
-    const { sessionId, status } = req.body;
+    const { sessionId, status, userId } = req.body;
     if (!sessionId || !status) {
       return res.status(400).json({ error: 'Session ID and status are required' });
     }
 
-    if (!['present', 'absent', 'late', 'excused'].includes(status)) {
-      return res.status(400).json({ error: 'Invalid attendance status' });
+    if (!['present', 'absent', 'late', 'excused'].includes(status.toLowerCase())) {
+      return res.status(400).json({ error: 'Invalid attendance status. Must be: present, absent, late, or excused' });
+    }
+
+    const user = await User.findById(req.userId);
+    const isAdmin = user && user.role === 'ADMIN';
+    
+    // If admin provided userId, use it; otherwise use the authenticated user's ID
+    const targetUserId = (isAdmin && userId) ? userId : req.userId;
+    
+    // If admin is marking for another user, verify that user exists
+    if (isAdmin && userId && userId !== req.userId) {
+      const targetUser = await User.findById(userId);
+      if (!targetUser) {
+        return res.status(404).json({ error: 'Target user not found' });
+      }
     }
 
     const session = await Session.findById(sessionId);
@@ -860,15 +886,67 @@ app.post('/api/attendance', authenticateToken, async (req, res) => {
     }
 
     const attendance = await Attendance.findOneAndUpdate(
-      { userId: req.userId, sessionId },
-      { userId: req.userId, sessionId, status, markedAt: new Date() },
+      { userId: targetUserId, sessionId },
+      { userId: targetUserId, sessionId, status: status.toLowerCase(), markedAt: new Date() },
       { upsert: true, new: true }
     );
+
+    await attendance.populate({ path: 'sessionId', select: 'title description date time venue trainer', model: 'Session' });
+    await attendance.populate({ path: 'userId', select: 'studentFullName email idNumber', model: 'User' });
 
     res.json({ success: true, message: 'Attendance marked successfully', attendance });
   } catch (error) {
     console.error('Error marking attendance:', error);
     res.status(500).json({ error: 'Failed to mark attendance' });
+  }
+});
+
+// Get attendance for a specific session (admin only - shows all students)
+app.get('/api/admin/sessions/:sessionId/attendance', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const session = await Session.findById(sessionId);
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    // Get all students
+    const allStudents = await User.find({ role: 'STUDENT' }).select('studentFullName email idNumber');
+    
+    // Get attendance records for this session
+    const attendanceRecords = await Attendance.find({ sessionId })
+      .populate({ path: 'userId', select: 'studentFullName email idNumber', model: 'User' });
+
+    // Create a map of attendance
+    const attendanceMap = new Map();
+    attendanceRecords.forEach(att => {
+      if (att.userId) {
+        attendanceMap.set(att.userId._id.toString(), {
+          status: att.status,
+          markedAt: att.markedAt,
+          notes: att.notes
+        });
+      }
+    });
+
+    // Combine all students with their attendance status
+    const attendanceData = allStudents.map(student => {
+      const attendanceRecord = attendanceMap.get(student._id.toString());
+      return {
+        userId: student._id,
+        studentFullName: student.studentFullName,
+        idNumber: student.idNumber,
+        email: student.email,
+        status: attendanceRecord?.status || 'absent',
+        markedAt: attendanceRecord?.markedAt,
+        notes: attendanceRecord?.notes
+      };
+    });
+
+    res.json({ success: true, session, attendance: attendanceData });
+  } catch (error) {
+    console.error('Error fetching session attendance:', error);
+    res.status(500).json({ error: 'Failed to fetch attendance' });
   }
 });
 
@@ -911,14 +989,44 @@ app.get('/api/files/:filePath(*)', async (req, res) => {
 
 // ========== ADMIN ROUTES ==========
 
-// Get all users
+// Get all users (admin only - returns all registered users)
 app.get('/api/users/all', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const students = await User.find({ role: 'STUDENT' }).select('-password').sort({ createdAt: -1 });
+    const students = await User.find({ role: 'STUDENT' })
+      .select('-password')
+      .sort({ createdAt: -1 });
+    
     res.json({ success: true, students });
   } catch (error) {
     console.error('Error fetching students:', error);
     res.status(500).json({ error: 'Failed to fetch students' });
+  }
+});
+
+// Get current user (me)
+app.get('/api/users/me', authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId).select('-password');
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json({
+      success: true,
+      user: {
+        id: user._id,
+        studentFullName: user.studentFullName,
+        idNumber: user.idNumber,
+        email: user.email,
+        role: user.role || 'STUDENT',
+        emailVerified: user.emailVerified,
+        phone: user.phone,
+        createdAt: user.createdAt,
+        lastLogin: user.lastLogin
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching current user:', error);
+    res.status(500).json({ error: 'Failed to fetch user' });
   }
 });
 

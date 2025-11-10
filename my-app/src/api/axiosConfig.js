@@ -33,11 +33,8 @@ axiosInstance.interceptors.response.use(
       const { status, data } = error.response;
       
       if (status === 401) {
-        // Unauthorized - clear token and redirect to login
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('user');
-        window.location.href = '/';
-        toast.error('Session expired. Please login again.');
+        // Do not auto-redirect on 401; let the caller decide (AuthContext handles logout)
+        toast.error('Session issue detected. Please re-login if actions fail.');
       } else if (status === 403) {
         toast.error('You do not have permission to perform this action.');
       } else if (status >= 500) {

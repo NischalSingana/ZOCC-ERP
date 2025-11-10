@@ -44,7 +44,8 @@ const Attendance = () => {
       if (!monthlyData[month]) {
         monthlyData[month] = { date: month, present: 0, absent: 0 };
       }
-      if (session.status === 'present') {
+      const status = session.status?.toLowerCase();
+      if (status === 'present') {
         monthlyData[month].present++;
       } else {
         monthlyData[month].absent++;
@@ -55,7 +56,7 @@ const Attendance = () => {
   };
 
   const totalSessions = recentSessions.length;
-  const presentCount = recentSessions.filter(s => s.status === 'present').length;
+  const presentCount = recentSessions.filter(s => s.status?.toLowerCase() === 'present').length;
   const attendanceRate = totalSessions > 0 ? ((presentCount / totalSessions) * 100).toFixed(1) : 0;
 
   if (loading) {
@@ -183,22 +184,27 @@ const Attendance = () => {
                     </td>
                     <td className="py-3 px-4 text-zocc-blue-300">{session.trainer || 'N/A'}</td>
                     <td className="py-3 px-4">
-                      <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${
-                        session.status === 'present'
-                          ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                          : session.status === 'late'
-                          ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
-                          : session.status === 'excused'
-                          ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                          : 'bg-red-500/20 text-red-400 border border-red-500/30'
-                      }`}>
-                        {session.status === 'present' ? (
-                          <CheckCircle size={14} />
-                        ) : (
-                          <XCircle size={14} />
-                        )}
-                        {session.status?.toUpperCase() || 'ABSENT'}
-                      </span>
+                      {(() => {
+                        const status = session.status?.toLowerCase() || 'absent';
+                        return (
+                          <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${
+                            status === 'present'
+                              ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                              : status === 'late'
+                              ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
+                              : status === 'excused'
+                              ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                              : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                          }`}>
+                            {status === 'present' ? (
+                              <CheckCircle size={14} />
+                            ) : (
+                              <XCircle size={14} />
+                            )}
+                            {status.toUpperCase()}
+                          </span>
+                        );
+                      })()}
                     </td>
                   </tr>
                 ))}

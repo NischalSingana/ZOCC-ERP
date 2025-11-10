@@ -20,13 +20,13 @@ const SubmissionsApproval = () => {
       if (response.data?.success) {
         let filtered = response.data.submissions || [];
         if (filter !== 'all') {
-          filtered = filtered.filter((s) => s.status.toLowerCase() === filter);
+          filtered = filtered.filter((s) => s.status.toUpperCase() === filter.toUpperCase());
         }
         setSubmissions(filtered);
       }
     } catch (error) {
       console.error('Error fetching submissions:', error);
-      toast.error('Failed to load submissions');
+      toast.error(error.response?.data?.error || 'Failed to load submissions');
     } finally {
       setLoading(false);
     }
@@ -74,13 +74,18 @@ const SubmissionsApproval = () => {
     {
       key: 'session',
       header: 'Session',
-      render: (submission) => submission.session?.title || 'N/A',
+      render: (submission) => {
+        const session = submission.sessionId || submission.session;
+        return session?.title || 'N/A';
+      },
     },
     {
       key: 'student',
       header: 'Student',
-      render: (submission) =>
-        submission.user?.studentFullName || submission.user?.email || 'N/A',
+      render: (submission) => {
+        const user = submission.userId || submission.user;
+        return user?.studentFullName || user?.email || 'N/A';
+      },
     },
     {
       key: 'file',
@@ -95,25 +100,28 @@ const SubmissionsApproval = () => {
     {
       key: 'status',
       header: 'Status',
-      render: (submission) => (
-        <span
-          className={`px-2 py-1 rounded text-xs ${
-            submission.status === 'ACCEPTED'
-              ? 'bg-green-500/20 text-green-400'
-              : submission.status === 'REJECTED'
-              ? 'bg-red-500/20 text-red-400'
-              : 'bg-yellow-500/20 text-yellow-400'
-          }`}
-        >
-          {submission.status}
-        </span>
-      ),
+      render: (submission) => {
+        const status = submission.status?.toUpperCase() || 'PENDING';
+        return (
+          <span
+            className={`px-2 py-1 rounded text-xs ${
+              status === 'ACCEPTED'
+                ? 'bg-green-500/20 text-green-400'
+                : status === 'REJECTED'
+                ? 'bg-red-500/20 text-red-400'
+                : 'bg-yellow-500/20 text-yellow-400'
+            }`}
+          >
+            {status}
+          </span>
+        );
+      },
     },
     {
       key: 'submittedAt',
       header: 'Submitted',
       render: (submission) =>
-        new Date(submission.submittedAt).toLocaleDateString(),
+        submission.submittedAt ? new Date(submission.submittedAt).toLocaleDateString() : 'N/A',
     },
     {
       key: 'actions',
@@ -126,16 +134,16 @@ const SubmissionsApproval = () => {
           >
             <Download size={18} className="text-zocc-blue-400" />
           </button>
-          {submission.status === 'PENDING' && (
+          {(submission.status?.toUpperCase() === 'PENDING' || !submission.status) && (
             <>
               <button
-                onClick={() => handleApprove(submission.id)}
+                onClick={() => handleApprove(submission.id || submission._id)}
                 className="p-2 hover:bg-green-900/20 rounded-lg transition-colors"
               >
                 <CheckCircle size={18} className="text-green-400" />
               </button>
               <button
-                onClick={() => handleReject(submission.id)}
+                onClick={() => handleReject(submission.id || submission._id)}
                 className="p-2 hover:bg-red-900/20 rounded-lg transition-colors"
               >
                 <XCircle size={18} className="text-red-400" />
@@ -179,7 +187,7 @@ const SubmissionsApproval = () => {
         <Table
           data={submissions}
           columns={columns}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.id || item._id}
           emptyMessage="No submissions found"
         />
       </div>

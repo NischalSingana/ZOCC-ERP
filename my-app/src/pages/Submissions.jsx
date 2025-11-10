@@ -147,28 +147,30 @@ const Submissions = () => {
   };
 
   const getStatusIcon = (status) => {
-    switch (status) {
-      case 'accepted':
+    const normalizedStatus = (status?.toUpperCase() || 'PENDING');
+    switch (normalizedStatus) {
+      case 'ACCEPTED':
         return <CheckCircle className="text-green-400" size={20} />;
-      case 'reviewed':
-        return <Eye className="text-blue-400" size={20} />;
-      case 'pending':
+      case 'REJECTED':
+        return <XCircle className="text-red-400" size={20} />;
+      case 'PENDING':
         return <Clock className="text-yellow-400" size={20} />;
       default:
-        return <XCircle className="text-red-400" size={20} />;
+        return <Clock className="text-yellow-400" size={20} />;
     }
   };
 
   const getStatusColor = (status) => {
-    switch (status) {
-      case 'accepted':
+    const normalizedStatus = (status?.toUpperCase() || 'PENDING');
+    switch (normalizedStatus) {
+      case 'ACCEPTED':
         return 'bg-green-500/20 text-green-400 border-green-500/30';
-      case 'reviewed':
-        return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
-      case 'pending':
+      case 'REJECTED':
+        return 'bg-red-500/20 text-red-400 border-red-500/30';
+      case 'PENDING':
         return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
       default:
-        return 'bg-red-500/20 text-red-400 border-red-500/30';
+        return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
     }
   };
 

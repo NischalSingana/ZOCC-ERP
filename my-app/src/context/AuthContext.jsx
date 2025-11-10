@@ -16,36 +16,61 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Check if user is logged in on mount
-    const token = localStorage.getItem('authToken');
-    const storedUser = localStorage.getItem('user');
-    
-    if (token && storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-        // Verify token is still valid
-        fetchUser();
-      } catch (error) {
-        console.error('Error parsing stored user:', error);
-        logout();
-      }
-    }
-    setLoading(false);
-  }, []);
+  const logout = () => {
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('user');
+    setUser(null);
+    axiosInstance.post('/api/auth/logout').catch(() => {
+      // Ignore errors on logout
+    });
+    toast.success('Logged out successfully');
+  };
 
   const fetchUser = async () => {
     try {
       const response = await axiosInstance.get('/api/users/me');
-      if (response.data?.user) {
+      if (response.data?.success && response.data?.user) {
         setUser(response.data.user);
         localStorage.setItem('user', JSON.stringify(response.data.user));
+        return response.data.user;
       }
+      throw new Error('Invalid response');
     } catch (error) {
       console.error('Error fetching user:', error);
-      logout();
+      // Only logout if it's an authentication error (401/403)
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        logout();
+      }
+      throw error;
     }
   };
+
+  useEffect(() => {
+    // Check if user is logged in on mount
+    const initializeAuth = async () => {
+      setLoading(true);
+      const token = localStorage.getItem('authToken');
+      const storedUser = localStorage.getItem('user');
+      
+      if (token && storedUser) {
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          setUser(parsedUser);
+          // Verify token synchronously before finishing loading
+          await fetchUser().catch(() => {
+            // If token invalid, fetchUser will handle logout on 401/403
+          });
+        } catch (error) {
+          console.error('Error parsing stored user:', error);
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('user');
+        }
+      }
+      setLoading(false);
+    };
+    
+    initializeAuth();
+  }, []);
 
   const login = async (email, password) => {
     try {
@@ -66,16 +91,6 @@ export const AuthProvider = ({ children }) => {
       const errorMessage = error.response?.data?.error || 'Login failed. Please try again.';
       return { success: false, error: errorMessage };
     }
-  };
-
-  const logout = () => {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('user');
-    setUser(null);
-    axiosInstance.post('/api/auth/logout').catch(() => {
-      // Ignore errors on logout
-    });
-    toast.success('Logged out successfully');
   };
 
   const updateUser = (userData) => {

@@ -18,14 +18,15 @@ const RegisteredStudents = () => {
   const fetchStudents = async () => {
     try {
       setLoading(true);
-      // Assuming you have an API endpoint to fetch all students
-      // const response = await axiosInstance.get('/api/admin/students');
-      // For now, using mock data
-      const mockStudents = [];
-      setStudents(mockStudents);
+      const response = await axiosInstance.get('/api/users/all');
+      if (response.data?.success) {
+        setStudents(response.data.students || []);
+      } else {
+        toast.error('Failed to load students');
+      }
     } catch (error) {
       console.error('Error fetching students:', error);
-      toast.error('Failed to load students');
+      toast.error(error.response?.data?.error || 'Failed to load students');
     } finally {
       setLoading(false);
     }

@@ -3,14 +3,14 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 
 const Leaderboard = () => {
   const leaderboardData = [
-    { rank: 1, name: 'Alex Chen', points: 1250, attendance: 50, submissions: 30, trend: 'up' },
-    { rank: 2, name: 'Priya Sharma', points: 1180, attendance: 48, submissions: 28, trend: 'up' },
-    { rank: 3, name: 'John Martinez', points: 1120, attendance: 46, submissions: 26, trend: 'stable' },
-    { rank: 4, name: 'Emma Wilson', points: 1080, attendance: 45, submissions: 25, trend: 'down' },
-    { rank: 5, name: 'Michael Liu', points: 1050, attendance: 44, submissions: 24, trend: 'up' },
-    { rank: 6, name: 'Sarah Johnson', points: 980, attendance: 42, submissions: 22, trend: 'down' },
-    { rank: 7, name: 'David Kim', points: 920, attendance: 41, submissions: 20, trend: 'stable' },
-    { rank: 8, name: 'Lisa Thompson', points: 880, attendance: 40, submissions: 19, trend: 'up' },
+    { rank: 1, name: 'Nischal', points: 1250, attendance: 50, submissions: 30, trend: 'up' },
+    { rank: 2, name: 'Sudheer', points: 1180, attendance: 48, submissions: 28, trend: 'up' },
+    { rank: 3, name: 'Kushaal', points: 1120, attendance: 46, submissions: 26, trend: 'stable' },
+    { rank: 4, name: 'Rishabh', points: 1080, attendance: 45, submissions: 25, trend: 'down' },
+    { rank: 5, name: 'Rahul', points: 1050, attendance: 44, submissions: 24, trend: 'up' },
+    { rank: 6, name: 'Ravi', points: 980, attendance: 42, submissions: 22, trend: 'down' },
+    { rank: 7, name: 'Rakesh', points: 920, attendance: 41, submissions: 20, trend: 'stable' },
+    { rank: 8, name: 'Raj', points: 880, attendance: 40, submissions: 19, trend: 'up' },
   ];
 
   const getRankIcon = (rank) => {
@@ -26,7 +26,7 @@ const Leaderboard = () => {
     }
   };
 
-  const chartData = leaderboardData.map((entry, idx) => ({
+  const chartData = leaderboardData.map((entry) => ({
     name: entry.name.split(' ')[0],
     points: entry.points,
   }));
@@ -38,9 +38,8 @@ const Leaderboard = () => {
         {leaderboardData.slice(0, 3).map((user, idx) => (
           <div
             key={user.rank}
-            className={`dashboard-card relative overflow-hidden ${
-              idx === 0 ? 'border-2 border-yellow-400' : idx === 1 ? 'border-2 border-gray-300' : 'border-2 border-amber-600'
-            }`}
+            className={`dashboard-card relative overflow-hidden ${idx === 0 ? 'border-2 border-yellow-400' : idx === 1 ? 'border-2 border-gray-300' : 'border-2 border-amber-600'
+              }`}
           >
             <div className="absolute top-4 right-4">
               {getRankIcon(user.rank)}
@@ -74,9 +73,9 @@ const Leaderboard = () => {
             <CartesianGrid strokeDasharray="3 3" stroke="#1e3a5f" />
             <XAxis dataKey="name" stroke="#93c5fd" />
             <YAxis stroke="#93c5fd" />
-            <Tooltip 
-              contentStyle={{ 
-                backgroundColor: '#0b2447', 
+            <Tooltip
+              contentStyle={{
+                backgroundColor: '#0b2447',
                 border: '1px solid #1e4d8b',
                 borderRadius: '8px',
                 color: '#fff'

@@ -1,9 +1,10 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axiosInstance from '../api/axiosConfig';
 import toast from 'react-hot-toast';
 
 const AuthContext = createContext();
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
@@ -16,7 +17,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem('authToken');
     localStorage.removeItem('user');
     setUser(null);
@@ -24,9 +25,9 @@ export const AuthProvider = ({ children }) => {
       // Ignore errors on logout
     });
     toast.success('Logged out successfully');
-  };
+  }, []);
 
-  const fetchUser = async () => {
+  const fetchUser = useCallback(async () => {
     try {
       const response = await axiosInstance.get('/api/users/me');
       if (response.data?.success && response.data?.user) {
@@ -43,7 +44,7 @@ export const AuthProvider = ({ children }) => {
       }
       throw error;
     }
-  };
+  }, [logout]);
 
   useEffect(() => {
     // Check if user is logged in on mount
@@ -51,7 +52,7 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
       const token = localStorage.getItem('authToken');
       const storedUser = localStorage.getItem('user');
-      
+
       if (token && storedUser) {
         try {
           const parsedUser = JSON.parse(storedUser);
@@ -68,9 +69,9 @@ export const AuthProvider = ({ children }) => {
       }
       setLoading(false);
     };
-    
+
     initializeAuth();
-  }, []);
+  }, [fetchUser]);
 
   const login = async (email, password) => {
     try {

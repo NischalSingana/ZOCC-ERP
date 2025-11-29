@@ -18,7 +18,7 @@ import { useAuth } from '../context/AuthContext';
 
 const Sidebar = ({ isOpen, toggleSidebar }) => {
   const location = useLocation();
-  const { user, logout, isAdmin } = useAuth();
+  const { logout, isAdmin } = useAuth();
 
   const studentMenuItems = [
     { icon: LayoutDashboard, label: 'Overview', path: '/dashboard' },
@@ -56,16 +56,14 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
 
   return (
     <aside
-      className={`${
-        isOpen ? 'w-64' : 'w-20'
-      } bg-primary-900 border-r border-primary-800 shadow-sm transition-all duration-300 flex flex-col fixed left-0 top-0 h-full z-40`}
+      className={`${isOpen ? 'w-64' : 'w-20'
+        } bg-primary-900 border-r border-primary-800 shadow-sm transition-all duration-300 flex flex-col fixed left-0 top-0 h-full z-40`}
     >
       {/* Logo Section */}
       <div className="p-6 flex items-center justify-between border-b border-primary-800">
         <h1
-          className={`text-2xl font-bold text-zocc-blue-400 transition-all duration-300 ${
-            isOpen ? 'opacity-100' : 'opacity-0 w-0'
-          }`}
+          className={`text-2xl font-bold text-zocc-blue-400 transition-all duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 w-0'
+            }`}
         >
           ZeroOne ERP
         </h1>
@@ -107,17 +105,15 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
             <Link
               key={idx}
               to={item.path}
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group ${
-                active
+              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group ${active
                   ? 'text-zocc-blue-400 bg-zocc-blue-900/30 font-medium border-l-2 border-zocc-blue-400'
                   : 'text-primary-300 hover:text-zocc-blue-400 hover:bg-primary-800'
-              }`}
+                }`}
             >
               <Icon size={20} className="group-hover:scale-110 transition-transform flex-shrink-0" />
               <span
-                className={`transition-all duration-300 ${
-                  isOpen ? 'opacity-100' : 'opacity-0 w-0'
-                }`}
+                className={`transition-all duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 w-0'
+                  }`}
               >
                 {item.label}
               </span>
@@ -134,9 +130,8 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
         >
           <LogOut size={20} className="group-hover:scale-110 transition-transform flex-shrink-0" />
           <span
-            className={`transition-all duration-300 ${
-              isOpen ? 'opacity-100' : 'opacity-0 w-0'
-            }`}
+            className={`transition-all duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 w-0'
+              }`}
           >
             Logout
           </span>

@@ -229,20 +229,16 @@ const Submissions = () => {
                 </span>
               </div>
 
-              {(submission.fileUrl || submission.imageUrl) && (
+              {(submission.fileUrl || submission.imageUrl) && !submission.fileError && (
                 <div className="mb-4 rounded-lg overflow-hidden bg-zocc-blue-800/30">
                   {(() => {
                     let fileUrl = submission.fileUrl || submission.imageUrl;
                     const fileType = submission.fileType || 'image';
-
-                    // Use proxy endpoint if fileUrl is from R2 and direct access fails
-                    // This helps bypass CORS issues
-                    if (fileUrl && fileUrl.includes('r2.dev')) {
-                      // Extract the file path from the R2 URL
-                      const urlMatch = fileUrl.match(/r2\.dev\/(.+)$/);
-                      if (urlMatch && urlMatch[1]) {
-                        fileUrl = `${API_URL}/api/files/${urlMatch[1]}`;
-                      }
+                    
+                    // If fileUrl is a key path (starts with submissions/), use proxy endpoint
+                    // Otherwise, it's already a signed URL or full URL, use it directly
+                    if (fileUrl && fileUrl.startsWith('submissions/') && !fileUrl.startsWith('http')) {
+                      fileUrl = `${API_URL}/api/files/${encodeURIComponent(fileUrl)}`;
                     }
 
                     if (fileType === 'image') {
@@ -277,16 +273,15 @@ const Submissions = () => {
                           <div
                             className="file-fallback hidden items-center justify-center h-32 bg-zocc-blue-800/50 flex-col cursor-pointer hover:bg-zocc-blue-700/50 transition-colors"
                             onClick={() => {
-                              const fallbackUrl = fileUrl.includes('r2.dev') ? `${API_URL}/api/files/${fileUrl.match(/r2\.dev\/(.+)$/)?.[1] || ''}` : fileUrl;
-                              setSelectedImageUrl(fallbackUrl);
+                              setSelectedImageUrl(fileUrl);
                               setImageModalOpen(true);
                             }}
                           >
                             <ImageIcon className="text-zocc-blue-400 mb-2" size={32} />
                             <p className="text-zocc-blue-300 text-sm">Image not available</p>
-                            <a
-                              href={fileUrl.includes('r2.dev') ? `${API_URL}/api/files/${fileUrl.match(/r2\.dev\/(.+)$/)?.[1] || ''}` : fileUrl}
-                              target="_blank"
+                            <a 
+                              href={fileUrl}
+                              target="_blank" 
                               rel="noopener noreferrer"
                               className="text-zocc-blue-400 text-xs mt-2 hover:underline"
                               onClick={(e) => e.stopPropagation()}
@@ -297,19 +292,11 @@ const Submissions = () => {
                         </>
                       );
                     } else {
-                      // For PDFs and Word docs, use proxy if from R2
-                      let downloadUrl = fileUrl;
-                      if (fileUrl && fileUrl.includes('r2.dev')) {
-                        const urlMatch = fileUrl.match(/r2\.dev\/(.+)$/);
-                        if (urlMatch && urlMatch[1]) {
-                          downloadUrl = `${API_URL}/api/files/${urlMatch[1]}`;
-                        }
-                      }
-
+                      // For PDFs and Word docs
                       return (
-                        <a
-                          href={downloadUrl}
-                          target="_blank"
+                        <a 
+                          href={fileUrl} 
+                          target="_blank" 
                           rel="noopener noreferrer"
                           className="flex items-center justify-center h-32 bg-zocc-blue-800/50 hover:bg-zocc-blue-700/50 transition-colors"
                         >
@@ -328,6 +315,11 @@ const Submissions = () => {
                       );
                     }
                   })()}
+                </div>
+              )}
+              {submission.fileError && (
+                <div className="mb-4 rounded-lg p-4 bg-red-500/20 border border-red-500/30">
+                  <p className="text-red-400 text-sm">{submission.fileError}</p>
                 </div>
               )}
 

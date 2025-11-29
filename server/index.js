@@ -7,6 +7,7 @@ import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import mongoose from 'mongoose';
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import connectDB from './db/connect.js';
 import Otp from './models/Otp.js';
 import User from './models/User.js';
@@ -22,7 +23,7 @@ const OTP_LENGTH = 6;
 const MAX_VERIFY_ATTEMPTS = 5;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 const JWT_EXPIRES_IN = '7d';
-const ADMIN_EMAILS = process.env.ADMIN_EMAILS 
+const ADMIN_EMAILS = process.env.ADMIN_EMAILS
   ? process.env.ADMIN_EMAILS.split(',').map(email => email.toLowerCase().trim())
   : [];
 
@@ -67,7 +68,7 @@ function generateOTP() {
 async function withTimeout(promise, timeoutMs, errorMessage) {
   return Promise.race([
     promise,
-    new Promise((_, reject) => 
+    new Promise((_, reject) =>
       setTimeout(() => reject(new Error(errorMessage)), timeoutMs)
     )
   ]);
@@ -671,24 +672,93 @@ app.get('/api/submissions', authenticateToken, async (req, res) => {
   try {
     const user = await User.findById(req.userId);
     const isAdmin = user && user.role === 'ADMIN';
-    
+
     const query = isAdmin ? {} : { userId: req.userId };
-    const submissions = await Submission.find(query)
+    
+    // Only show submissions from new bucket (fileUrl starts with "submissions/")
+    // Filter out old submissions from old bucket (those with full HTTP URLs or invalid keys)
+    const allSubmissions = await Submission.find(query)
       .populate({ path: 'sessionId', select: 'title description date time venue trainer', model: 'Session' })
       .populate({ path: 'userId', select: 'studentFullName email idNumber', model: 'User' })
       .sort({ submittedAt: -1 });
     
-    res.json({ success: true, submissions });
+    // Filter to only include submissions with valid new bucket keys
+    const submissions = allSubmissions.filter(sub => {
+      if (!sub.fileUrl) return false;
+      // Include if it starts with "submissions/" (new bucket format)
+      if (sub.fileUrl.startsWith('submissions/')) return true;
+      // Exclude old bucket URLs (full HTTP URLs that don't contain "submissions/" in path)
+      if (sub.fileUrl.startsWith('http')) {
+        // Try to extract key - if we can't, it's from old bucket
+        const match = sub.fileUrl.match(/(submissions\/.*)/);
+        return !!match; // Only include if we can extract a valid key
+      }
+      return false; // Exclude anything else
+    });
+
+    // Generate signed URLs for private bucket access
+    const submissionsWithUrls = await Promise.all(submissions.map(async (sub) => {
+      const subObj = sub.toObject();
+
+      // If we have a fileUrl
+      if (subObj.fileUrl) {
+        let key = subObj.fileUrl;
+
+        // Backward compatibility: Extract key if it's a full URL
+        if (subObj.fileUrl.startsWith('http')) {
+          // Try to extract key from URL (e.g. https://.../submissions/...)
+          const match = subObj.fileUrl.match(/(submissions\/.*)/);
+          if (match) {
+            key = match[1];
+          } else {
+            // If we can't extract a key pattern, use proxy endpoint as fallback
+            subObj.fileUrl = `${req.protocol}://${req.get('host')}/api/files/${encodeURIComponent(subObj.fileUrl)}`;
+            return subObj;
+          }
+        }
+
+        // Only generate signed URL if R2 client is configured and key looks valid
+        if (r2Client && R2_BUCKET_NAME && key && key.startsWith('submissions/')) {
+          try {
+            const command = new GetObjectCommand({
+              Bucket: R2_BUCKET_NAME,
+              Key: key
+            });
+            // Generate signed URL valid for 1 hour
+            subObj.fileUrl = await getSignedUrl(r2Client, command, { expiresIn: 3600 });
+          } catch (error) {
+            console.error(`Error generating signed URL for key ${key}:`, error.message);
+            // Fallback to proxy endpoint if signed URL generation fails
+            subObj.fileUrl = `${req.protocol}://${req.get('host')}/api/files/${encodeURIComponent(key)}`;
+          }
+        } else {
+          // If R2 is not configured or key is invalid, use proxy endpoint
+          if (key && key.startsWith('submissions/')) {
+            subObj.fileUrl = `${req.protocol}://${req.get('host')}/api/files/${encodeURIComponent(key)}`;
+          } else {
+            // Invalid key format, mark as unavailable
+            subObj.fileUrl = null;
+            subObj.fileError = 'File URL is invalid or unavailable';
+          }
+        }
+      }
+      return subObj;
+    }));
+
+    res.json({ success: true, submissions: submissionsWithUrls });
   } catch (error) {
     console.error('Error fetching submissions:', error);
-    res.status(500).json({ error: 'Failed to fetch submissions' });
+    res.status(500).json({ error: 'Failed to fetch submissions', details: error.message });
   }
 });
 
 // Upload submission
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB
+    files: 1
+  },
   fileFilter: (req, file, cb) => {
     const allowedMimeTypes = [
       'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
@@ -699,7 +769,7 @@ const upload = multer({
     if (allowedMimeTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Only images, PDFs, and Word documents are allowed'), false);
+      cb(new Error(`File type ${file.mimetype} is not allowed. Only images, PDFs, and Word documents are allowed`), false);
     }
   }
 });
@@ -708,71 +778,166 @@ let r2Client = null;
 const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME;
 const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL;
 
-if (process.env.R2_ENDPOINT && process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY) {
-  r2Client = new S3Client({
-    region: 'auto',
-    endpoint: process.env.R2_ENDPOINT,
-    credentials: {
-      accessKeyId: process.env.R2_ACCESS_KEY_ID,
-      secretAccessKey: process.env.R2_SECRET_ACCESS_KEY
-    }
-  });
-  console.log('✅ Cloudflare R2 client initialized');
+if (process.env.R2_ENDPOINT && process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY && process.env.R2_BUCKET_NAME) {
+  try {
+    r2Client = new S3Client({
+      region: 'auto',
+      endpoint: process.env.R2_ENDPOINT,
+      credentials: {
+        accessKeyId: process.env.R2_ACCESS_KEY_ID,
+        secretAccessKey: process.env.R2_SECRET_ACCESS_KEY
+      }
+    });
+    console.log('✅ Cloudflare R2 client initialized');
+    console.log(`   Bucket: ${process.env.R2_BUCKET_NAME}`);
+    console.log(`   Endpoint: ${process.env.R2_ENDPOINT}`);
+  } catch (error) {
+    console.error('❌ Failed to initialize R2 client:', error.message);
+    r2Client = null;
+  }
+} else {
+  console.warn('⚠️  R2 configuration incomplete. File uploads will be disabled.');
+  console.warn('   Required: R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME');
 }
 
-app.post('/api/submissions', authenticateToken, upload.single('image'), async (req, res) => {
+// Multer error handler middleware
+const handleMulterError = (err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ error: 'File size exceeds 5MB limit' });
+    }
+    if (err.code === 'LIMIT_FILE_COUNT') {
+      return res.status(400).json({ error: 'Only one file is allowed' });
+    }
+    return res.status(400).json({ error: `Upload error: ${err.message}` });
+  }
+  if (err) {
+    return res.status(400).json({ error: err.message || 'File upload error' });
+  }
+  next();
+};
+
+app.post('/api/submissions', authenticateToken, upload.single('image'), handleMulterError, async (req, res) => {
   try {
     const { sessionId, notes } = req.body;
-    if (!sessionId || !req.file) {
-      return res.status(400).json({ error: 'Session ID and file are required' });
+
+    // Validate input
+    if (!sessionId) {
+      return res.status(400).json({ error: 'Session ID is required' });
     }
 
-    if (!r2Client || !R2_BUCKET_NAME || !R2_PUBLIC_URL) {
-      return res.status(503).json({ error: 'File upload service is not configured' });
+    if (!req.file) {
+      return res.status(400).json({ error: 'File is required' });
     }
 
+    // Check R2 configuration
+    if (!r2Client || !R2_BUCKET_NAME) {
+      console.error('R2 upload failed: R2 client or bucket name not configured');
+      console.error('R2 client:', r2Client ? 'initialized' : 'null');
+      console.error('R2_BUCKET_NAME:', R2_BUCKET_NAME || 'not set');
+      return res.status(503).json({ 
+        error: 'File upload service is not configured. Please contact administrator.',
+        details: 'R2 storage not properly configured'
+      });
+    }
+
+    // Validate session exists
     const session = await Session.findById(sessionId);
     if (!session) {
       return res.status(404).json({ error: 'Session not found' });
     }
 
+    // Determine file type
     const mimeType = req.file.mimetype;
     let fileType = 'image';
     if (mimeType === 'application/pdf') fileType = 'pdf';
     else if (mimeType === 'application/msword') fileType = 'doc';
     else if (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') fileType = 'docx';
 
+    // Generate unique file name
     const fileExtension = req.file.originalname.split('.').pop().toLowerCase();
     const uniqueFileName = `submissions/${req.userId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
 
-    await r2Client.send(new PutObjectCommand({
+    console.log(`📤 Uploading file to R2: ${uniqueFileName}`);
+    console.log(`   File size: ${(req.file.size / 1024).toFixed(2)} KB`);
+    console.log(`   Content type: ${req.file.mimetype}`);
+
+    // Upload to R2 with timeout
+    try {
+      await withTimeout(
+        r2Client.send(new PutObjectCommand({
       Bucket: R2_BUCKET_NAME,
       Key: uniqueFileName,
       Body: req.file.buffer,
       ContentType: req.file.mimetype,
-      CacheControl: 'public, max-age=31536000'
-    }));
+        })),
+        30000, // 30 second timeout
+        'R2 upload timeout'
+      );
+      console.log(`✅ File uploaded successfully to R2: ${uniqueFileName}`);
+    } catch (r2Error) {
+      console.error('❌ R2 upload error:', r2Error);
+      console.error('   Error name:', r2Error.name);
+      console.error('   Error message:', r2Error.message);
+      console.error('   Error code:', r2Error.Code || r2Error.code);
+      
+      let errorMessage = 'Failed to upload file to storage';
+      if (r2Error.message === 'R2 upload timeout') {
+        errorMessage = 'Upload timeout. The file may be too large or the connection is slow.';
+      } else if (r2Error.name === 'InvalidAccessKeyId' || r2Error.Code === 'InvalidAccessKeyId') {
+        errorMessage = 'Invalid R2 credentials. Please contact administrator.';
+      } else if (r2Error.name === 'SignatureDoesNotMatch' || r2Error.Code === 'SignatureDoesNotMatch') {
+        errorMessage = 'R2 authentication failed. Please contact administrator.';
+      } else if (r2Error.name === 'NoSuchBucket' || r2Error.Code === 'NoSuchBucket') {
+        errorMessage = 'R2 bucket not found. Please contact administrator.';
+      }
+      
+      return res.status(500).json({ 
+        error: errorMessage,
+        details: r2Error.message,
+        code: r2Error.Code || r2Error.code
+      });
+    }
 
-    const cleanPublicUrl = R2_PUBLIC_URL.endsWith('/') ? R2_PUBLIC_URL.slice(0, -1) : R2_PUBLIC_URL;
-    const cleanFileName = uniqueFileName.startsWith('/') ? uniqueFileName.slice(1) : uniqueFileName;
-    const fileUrl = `${cleanPublicUrl}/${cleanFileName}`;
-    
+    // Store submission in database
+    const fileUrl = uniqueFileName; // Store key for private bucket
+
+    try {
     const submission = await Submission.create({
       userId: req.userId,
       sessionId,
       fileUrl,
-      fileName: req.file.originalname,
+        fileName: req.file.originalname,
       fileType,
       notes: notes || '',
-      status: 'PENDING'
+        status: 'PENDING'
+      });
+
+      await submission.populate({ path: 'sessionId', select: 'title description date time venue trainer', model: 'Session' });
+
+      console.log(`✅ Submission created in database: ${submission._id}`);
+
+    res.status(201).json({
+      success: true,
+      message: 'Submission uploaded successfully',
+      submission
     });
-
-    await submission.populate({ path: 'sessionId', select: 'title description date time venue trainer', model: 'Session' });
-
-    res.status(201).json({ success: true, message: 'Submission uploaded successfully', submission });
+    } catch (dbError) {
+      console.error('❌ Database error creating submission:', dbError);
+      // File is already uploaded to R2, but we failed to save to DB
+      // This is a critical error - file is orphaned
+      return res.status(500).json({ 
+        error: 'File uploaded but failed to save submission record. Please contact administrator.',
+        details: dbError.message
+      });
+    }
   } catch (error) {
-    console.error('Error uploading submission:', error);
-    res.status(500).json({ error: 'Failed to upload submission. Please try again.' });
+    console.error('❌ Unexpected error in upload endpoint:', error);
+    console.error('   Error stack:', error.stack);
+    res.status(500).json({ 
+      error: 'Failed to upload submission. Please try again.',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 
@@ -784,7 +949,7 @@ app.put('/api/submissions/:id', authenticateToken, requireAdmin, async (req, res
       return res.status(404).json({ error: 'Submission not found' });
     }
     const { status, feedback } = req.body;
-    
+
     // Normalize status to uppercase
     if (status) {
       const normalizedStatus = status.toUpperCase();
@@ -794,15 +959,15 @@ app.put('/api/submissions/:id', authenticateToken, requireAdmin, async (req, res
         return res.status(400).json({ error: 'Invalid status. Must be PENDING, ACCEPTED, or REJECTED' });
       }
     }
-    
+
     if (feedback !== undefined) submission.feedback = feedback;
     submission.reviewedAt = new Date();
     submission.reviewedBy = req.userId;
     await submission.save();
-    
+
     await submission.populate({ path: 'sessionId', select: 'title description date time venue trainer', model: 'Session' });
     await submission.populate({ path: 'userId', select: 'studentFullName email idNumber', model: 'User' });
-    
+
     res.json({ success: true, message: 'Submission updated successfully', submission });
   } catch (error) {
     console.error('Error updating submission:', error);
@@ -868,10 +1033,10 @@ app.post('/api/attendance', authenticateToken, async (req, res) => {
 
     const user = await User.findById(req.userId);
     const isAdmin = user && user.role === 'ADMIN';
-    
+
     // If admin provided userId, use it; otherwise use the authenticated user's ID
     const targetUserId = (isAdmin && userId) ? userId : req.userId;
-    
+
     // If admin is marking for another user, verify that user exists
     if (isAdmin && userId && userId !== req.userId) {
       const targetUser = await User.findById(userId);
@@ -912,7 +1077,7 @@ app.get('/api/admin/sessions/:sessionId/attendance', authenticateToken, requireA
 
     // Get all students
     const allStudents = await User.find({ role: 'STUDENT' }).select('studentFullName email idNumber');
-    
+
     // Get attendance records for this session
     const attendanceRecords = await Attendance.find({ sessionId })
       .populate({ path: 'userId', select: 'studentFullName email idNumber', model: 'User' });
@@ -958,9 +1123,32 @@ app.get('/api/files/:filePath(*)', async (req, res) => {
       return res.status(503).json({ error: 'File service not configured' });
     }
 
-    const filePath = req.params.filePath;
+    const filePath = decodeURIComponent(req.params.filePath);
     if (!filePath || !filePath.startsWith('submissions/')) {
       return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // Optional: Verify user has access if auth token is provided
+    // This allows images to load without auth, but still validates if token is present
+    const authHeader = req.headers['authorization'];
+    if (authHeader) {
+      try {
+        const token = authHeader.split(' ')[1];
+        const decoded = jwt.verify(token, JWT_SECRET);
+        const user = await User.findById(decoded.userId);
+        const isAdmin = user && user.role === 'ADMIN';
+        
+        if (!isAdmin) {
+          // Extract userId from file path: submissions/{userId}/...
+          const pathMatch = filePath.match(/^submissions\/([^/]+)\//);
+          if (pathMatch && pathMatch[1] !== decoded.userId.toString()) {
+      return res.status(403).json({ error: 'Access denied' });
+          }
+        }
+      } catch (authError) {
+        // If auth fails, still allow access (for images without auth headers)
+        // This is a fallback - primary access should be through signed URLs
+      }
     }
 
     const response = await r2Client.send(new GetObjectCommand({
@@ -969,20 +1157,27 @@ app.get('/api/files/:filePath(*)', async (req, res) => {
     }));
 
     res.setHeader('Content-Type', response.ContentType || 'application/octet-stream');
-    res.setHeader('Cache-Control', 'public, max-age=31536000');
+    res.setHeader('Cache-Control', 'private, max-age=3600'); // 1 hour for private files
     res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Content-Disposition', `inline; filename="${filePath.split('/').pop()}"`);
     
     if (response.Body) {
-      response.Body.pipe(res);
+      // Convert stream to buffer for proper handling
+      const chunks = [];
+      for await (const chunk of response.Body) {
+        chunks.push(chunk);
+      }
+      const buffer = Buffer.concat(chunks);
+      res.send(buffer);
     } else {
       res.status(404).json({ error: 'File not found' });
     }
   } catch (error) {
     console.error('Error serving file:', error);
-    if (error.name === 'NoSuchKey') {
+    if (error.name === 'NoSuchKey' || error.Code === 'NoSuchKey') {
       res.status(404).json({ error: 'File not found' });
     } else {
-      res.status(500).json({ error: 'Failed to serve file' });
+      res.status(500).json({ error: 'Failed to serve file', details: error.message });
     }
   }
 });
@@ -995,7 +1190,7 @@ app.get('/api/users/all', authenticateToken, requireAdmin, async (req, res) => {
     const students = await User.find({ role: 'STUDENT' })
       .select('-password')
       .sort({ createdAt: -1 });
-    
+
     res.json({ success: true, students });
   } catch (error) {
     console.error('Error fetching students:', error);
@@ -1098,6 +1293,48 @@ app.post('/api/admin/students/:id/reset-password', authenticateToken, requireAdm
   } catch (error) {
     console.error('Error resetting password:', error);
     res.status(500).json({ error: 'Failed to reset password' });
+  }
+});
+
+// Clean up old submissions from old bucket (admin only)
+app.delete('/api/admin/submissions/cleanup-old', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    // Find all submissions that are from old bucket
+    // These are submissions where fileUrl is a full HTTP URL that doesn't contain "submissions/" in the path
+    // OR fileUrl doesn't start with "submissions/"
+    const allSubmissions = await Submission.find({});
+    
+    const oldSubmissions = allSubmissions.filter(sub => {
+      if (!sub.fileUrl) return true; // Include submissions with no fileUrl
+      
+      // Exclude new bucket submissions (start with "submissions/")
+      if (sub.fileUrl.startsWith('submissions/')) return false;
+      
+      // Include old bucket URLs (full HTTP URLs)
+      if (sub.fileUrl.startsWith('http')) {
+        // Check if we can extract a valid "submissions/" key
+        const match = sub.fileUrl.match(/(submissions\/.*)/);
+        // If we can't extract a valid key, it's from old bucket
+        return !match;
+      }
+      
+      // Include anything else that doesn't match new bucket format
+      return true;
+    });
+    
+    const oldSubmissionIds = oldSubmissions.map(sub => sub._id);
+    const deletedCount = await Submission.deleteMany({ _id: { $in: oldSubmissionIds } });
+    
+    console.log(`🗑️  Deleted ${deletedCount.deletedCount} old submissions from old bucket`);
+    
+    res.json({ 
+      success: true, 
+      message: `Successfully deleted ${deletedCount.deletedCount} old submissions`,
+      deletedCount: deletedCount.deletedCount
+    });
+  } catch (error) {
+    console.error('Error cleaning up old submissions:', error);
+    res.status(500).json({ error: 'Failed to clean up old submissions', details: error.message });
   }
 });
 

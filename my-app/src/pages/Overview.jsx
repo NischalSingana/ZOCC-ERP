@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
-import { 
-  CalendarCheck, 
-  FileText, 
-  FolderKanban, 
+import {
+  CalendarCheck,
+  FileText,
+  FolderKanban,
   TrendingUp,
   Calendar,
   Bell
 } from 'lucide-react';
-import axiosInstance from '../api/axiosConfig';
 import { API_URL } from '../utils/apiUrl';
 
 const Overview = () => {
@@ -29,7 +28,7 @@ const Overview = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('authToken');
-      
+
       // Fetch attendance data
       const attendanceRes = await fetch(`${API_URL}/api/attendance`, {
         headers: {
@@ -38,7 +37,7 @@ const Overview = () => {
       });
       const attendanceData = attendanceRes.ok ? await attendanceRes.json() : { attendance: [] };
       const presentCount = attendanceData.attendance?.filter(a => a.status?.toLowerCase() === 'present').length || 0;
-      
+
       // Fetch submissions data
       const submissionsRes = await fetch(`${API_URL}/api/submissions`, {
         headers: {
@@ -47,7 +46,7 @@ const Overview = () => {
       });
       const submissionsData = submissionsRes.ok ? await submissionsRes.json() : { submissions: [] };
       const submissionsCount = submissionsData.submissions?.length || 0;
-      
+
       // Fetch sessions data
       const sessionsRes = await fetch(`${API_URL}/api/sessions`, {
         headers: {
@@ -56,7 +55,7 @@ const Overview = () => {
       });
       const sessionsData = sessionsRes.ok ? await sessionsRes.json() : { sessions: [] };
       const allSessions = sessionsData.sessions || [];
-      
+
       // Get upcoming sessions (future dates)
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -75,7 +74,7 @@ const Overview = () => {
           trainer: session.trainer || 'TBA',
           type: 'Session'
         }));
-      
+
       // Fetch announcements if endpoint exists
       try {
         const announcementsRes = await fetch(`${API_URL}/api/announcements`, {
@@ -87,18 +86,18 @@ const Overview = () => {
           const announcementsData = await announcementsRes.json();
           setAnnouncements(announcementsData.announcements || announcementsData.data || []);
         }
-      } catch (error) {
+      } catch {
         console.log('Announcements endpoint not available');
         setAnnouncements([]);
       }
-      
+
       setStats({
         sessionsAttended: presentCount,
         submissionsMade: submissionsCount,
         projectsJoined: 0, // Projects feature not implemented yet
         leaderboardRank: null // Leaderboard feature not implemented yet
       });
-      
+
       setUpcomingSessions(upcoming);
     } catch (error) {
       console.error('Error fetching overview data:', error);
@@ -188,8 +187,8 @@ const Overview = () => {
           ) : (
             <div className="space-y-4">
               {upcomingSessions.map((session, idx) => (
-                <div 
-                  key={idx} 
+                <div
+                  key={idx}
                   className="bg-primary-800/50 rounded-lg p-4 border border-primary-700 hover:border-zocc-blue-600 transition-all"
                 >
                   <div className="flex items-start justify-between mb-2">
@@ -232,8 +231,8 @@ const Overview = () => {
                   low: 'border-l-blue-500 bg-blue-500/10'
                 };
                 return (
-                  <div 
-                    key={idx} 
+                  <div
+                    key={idx}
                     className={`border-l-4 rounded-lg p-4 ${priorityColors[priority]} hover:bg-opacity-20 transition-all cursor-pointer`}
                   >
                     <div className="flex items-start justify-between mb-2">
@@ -246,7 +245,7 @@ const Overview = () => {
                       <span>{announcement.author || announcement.createdBy || 'Admin'}</span>
                       <span>•</span>
                       <span>
-                        {announcement.createdAt 
+                        {announcement.createdAt
                           ? new Date(announcement.createdAt).toLocaleDateString()
                           : announcement.date || 'Recently'}
                       </span>

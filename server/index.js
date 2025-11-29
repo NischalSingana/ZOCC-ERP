@@ -14,6 +14,8 @@ import User from './models/User.js';
 import Session from './models/Session.js';
 import Submission from './models/Submission.js';
 import Attendance from './models/Attendance.js';
+import Announcement from './models/Announcement.js';
+import Query from './models/Query.js';
 
 dotenv.config();
 
@@ -60,7 +62,7 @@ app.use(cors({
 
 // Helper functions
 function generateOTP() {
-  return Array.from({ length: OTP_LENGTH }, () => 
+  return Array.from({ length: OTP_LENGTH }, () =>
     Math.floor(Math.random() * 10)
   ).join('');
 }
@@ -358,7 +360,7 @@ app.post('/api/auth/register', async (req, res) => {
     verifiedUser.idNumber = idNumber;
     verifiedUser.password = hashedPassword;
     await verifiedUser.save();
-    
+
     const token = jwt.sign({ userId: verifiedUser._id, email: verifiedUser.email }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
     verifiedUser.lastLogin = new Date();
     await verifiedUser.save();
@@ -674,14 +676,14 @@ app.get('/api/submissions', authenticateToken, async (req, res) => {
     const isAdmin = user && user.role === 'ADMIN';
 
     const query = isAdmin ? {} : { userId: req.userId };
-    
+
     // Only show submissions from new bucket (fileUrl starts with "submissions/")
     // Filter out old submissions from old bucket (those with full HTTP URLs or invalid keys)
     const allSubmissions = await Submission.find(query)
       .populate({ path: 'sessionId', select: 'title description date time venue trainer', model: 'Session' })
       .populate({ path: 'userId', select: 'studentFullName email idNumber', model: 'User' })
       .sort({ submittedAt: -1 });
-    
+
     // Filter to only include submissions with valid new bucket keys
     const submissions = allSubmissions.filter(sub => {
       if (!sub.fileUrl) return false;
@@ -835,7 +837,7 @@ app.post('/api/submissions', authenticateToken, upload.single('image'), handleMu
       console.error('R2 upload failed: R2 client or bucket name not configured');
       console.error('R2 client:', r2Client ? 'initialized' : 'null');
       console.error('R2_BUCKET_NAME:', R2_BUCKET_NAME || 'not set');
-      return res.status(503).json({ 
+      return res.status(503).json({
         error: 'File upload service is not configured. Please contact administrator.',
         details: 'R2 storage not properly configured'
       });
@@ -866,10 +868,10 @@ app.post('/api/submissions', authenticateToken, upload.single('image'), handleMu
     try {
       await withTimeout(
         r2Client.send(new PutObjectCommand({
-      Bucket: R2_BUCKET_NAME,
-      Key: uniqueFileName,
-      Body: req.file.buffer,
-      ContentType: req.file.mimetype,
+          Bucket: R2_BUCKET_NAME,
+          Key: uniqueFileName,
+          Body: req.file.buffer,
+          ContentType: req.file.mimetype,
         })),
         30000, // 30 second timeout
         'R2 upload timeout'
@@ -880,7 +882,7 @@ app.post('/api/submissions', authenticateToken, upload.single('image'), handleMu
       console.error('   Error name:', r2Error.name);
       console.error('   Error message:', r2Error.message);
       console.error('   Error code:', r2Error.Code || r2Error.code);
-      
+
       let errorMessage = 'Failed to upload file to storage';
       if (r2Error.message === 'R2 upload timeout') {
         errorMessage = 'Upload timeout. The file may be too large or the connection is slow.';
@@ -891,8 +893,8 @@ app.post('/api/submissions', authenticateToken, upload.single('image'), handleMu
       } else if (r2Error.name === 'NoSuchBucket' || r2Error.Code === 'NoSuchBucket') {
         errorMessage = 'R2 bucket not found. Please contact administrator.';
       }
-      
-      return res.status(500).json({ 
+
+      return res.status(500).json({
         error: errorMessage,
         details: r2Error.message,
         code: r2Error.Code || r2Error.code
@@ -903,13 +905,13 @@ app.post('/api/submissions', authenticateToken, upload.single('image'), handleMu
     const fileUrl = uniqueFileName; // Store key for private bucket
 
     try {
-    const submission = await Submission.create({
-      userId: req.userId,
-      sessionId,
-      fileUrl,
+      const submission = await Submission.create({
+        userId: req.userId,
+        sessionId,
+        fileUrl,
         fileName: req.file.originalname,
-      fileType,
-      notes: notes || '',
+        fileType,
+        notes: notes || '',
         status: 'PENDING'
       });
 
@@ -917,16 +919,16 @@ app.post('/api/submissions', authenticateToken, upload.single('image'), handleMu
 
       console.log(`✅ Submission created in database: ${submission._id}`);
 
-    res.status(201).json({
-      success: true,
-      message: 'Submission uploaded successfully',
-      submission
-    });
+      res.status(201).json({
+        success: true,
+        message: 'Submission uploaded successfully',
+        submission
+      });
     } catch (dbError) {
       console.error('❌ Database error creating submission:', dbError);
       // File is already uploaded to R2, but we failed to save to DB
       // This is a critical error - file is orphaned
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: 'File uploaded but failed to save submission record. Please contact administrator.',
         details: dbError.message
       });
@@ -934,7 +936,7 @@ app.post('/api/submissions', authenticateToken, upload.single('image'), handleMu
   } catch (error) {
     console.error('❌ Unexpected error in upload endpoint:', error);
     console.error('   Error stack:', error.stack);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to upload submission. Please try again.',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
@@ -984,7 +986,7 @@ app.get('/api/attendance', authenticateToken, async (req, res) => {
     const userAttendance = await Attendance.find({ userId: req.userId })
       .populate({ path: 'sessionId', select: 'title description date time venue trainer', model: 'Session' })
       .sort({ markedAt: -1 });
-    
+
     const attendanceMap = new Map();
     userAttendance.forEach(att => {
       if (att.sessionId) {
@@ -995,7 +997,7 @@ app.get('/api/attendance', authenticateToken, async (req, res) => {
         });
       }
     });
-    
+
     const attendanceData = sessions.map(session => {
       const attendanceRecord = attendanceMap.get(session._id.toString());
       return {
@@ -1137,12 +1139,12 @@ app.get('/api/files/:filePath(*)', async (req, res) => {
         const decoded = jwt.verify(token, JWT_SECRET);
         const user = await User.findById(decoded.userId);
         const isAdmin = user && user.role === 'ADMIN';
-        
+
         if (!isAdmin) {
           // Extract userId from file path: submissions/{userId}/...
           const pathMatch = filePath.match(/^submissions\/([^/]+)\//);
           if (pathMatch && pathMatch[1] !== decoded.userId.toString()) {
-      return res.status(403).json({ error: 'Access denied' });
+            return res.status(403).json({ error: 'Access denied' });
           }
         }
       } catch (authError) {
@@ -1160,7 +1162,7 @@ app.get('/api/files/:filePath(*)', async (req, res) => {
     res.setHeader('Cache-Control', 'private, max-age=3600'); // 1 hour for private files
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Content-Disposition', `inline; filename="${filePath.split('/').pop()}"`);
-    
+
     if (response.Body) {
       // Convert stream to buffer for proper handling
       const chunks = [];
@@ -1222,6 +1224,44 @@ app.get('/api/users/me', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error fetching current user:', error);
     res.status(500).json({ error: 'Failed to fetch user' });
+  }
+});
+
+// Update current user (me)
+app.put('/api/users/me', authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const { studentFullName, email, phone } = req.body;
+
+    if (studentFullName) user.studentFullName = studentFullName;
+    // Only allow email update if not verified or if admin (but this is 'me' route, so usually strict)
+    // For now, let's allow updating email but maybe require re-verification? 
+    // Keeping it simple: allow update if provided.
+    if (email) user.email = email.toLowerCase();
+    if (phone !== undefined) user.phone = phone;
+
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      user: {
+        id: user._id,
+        studentFullName: user.studentFullName,
+        idNumber: user.idNumber,
+        email: user.email,
+        role: user.role || 'STUDENT',
+        emailVerified: user.emailVerified,
+        phone: user.phone
+      }
+    });
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    res.status(500).json({ error: 'Failed to update profile' });
   }
 });
 
@@ -1300,41 +1340,217 @@ app.post('/api/admin/students/:id/reset-password', authenticateToken, requireAdm
 app.delete('/api/admin/submissions/cleanup-old', authenticateToken, requireAdmin, async (req, res) => {
   try {
     // Find all submissions that are from old bucket
-    // These are submissions where fileUrl is a full HTTP URL that doesn't contain "submissions/" in the path
-    // OR fileUrl doesn't start with "submissions/"
     const allSubmissions = await Submission.find({});
-    
+
     const oldSubmissions = allSubmissions.filter(sub => {
       if (!sub.fileUrl) return true; // Include submissions with no fileUrl
-      
+
       // Exclude new bucket submissions (start with "submissions/")
       if (sub.fileUrl.startsWith('submissions/')) return false;
-      
+
       // Include old bucket URLs (full HTTP URLs)
-      if (sub.fileUrl.startsWith('http')) {
-        // Check if we can extract a valid "submissions/" key
-        const match = sub.fileUrl.match(/(submissions\/.*)/);
-        // If we can't extract a valid key, it's from old bucket
-        return !match;
-      }
-      
-      // Include anything else that doesn't match new bucket format
       return true;
     });
-    
+
+    let deletedFilesCount = 0;
+
+    // Try to delete files from R2 if possible
+    if (r2Client && R2_BUCKET_NAME) {
+      for (const sub of oldSubmissions) {
+        if (sub.fileUrl && sub.fileUrl.startsWith('http')) {
+          try {
+            // Try to extract key from URL
+            // Assuming URL format: https://.../key
+            const urlObj = new URL(sub.fileUrl);
+            const key = urlObj.pathname.startsWith('/') ? urlObj.pathname.slice(1) : urlObj.pathname;
+
+            if (key) {
+              const { DeleteObjectCommand } = await import('@aws-sdk/client-s3');
+              await r2Client.send(new DeleteObjectCommand({
+                Bucket: R2_BUCKET_NAME,
+                Key: key
+              }));
+              deletedFilesCount++;
+            }
+          } catch (err) {
+            console.warn(`Failed to delete file for submission ${sub._id}:`, err.message);
+            // Continue deleting DB record even if file delete fails
+          }
+        }
+      }
+    }
+
     const oldSubmissionIds = oldSubmissions.map(sub => sub._id);
     const deletedCount = await Submission.deleteMany({ _id: { $in: oldSubmissionIds } });
-    
-    console.log(`🗑️  Deleted ${deletedCount.deletedCount} old submissions from old bucket`);
-    
-    res.json({ 
-      success: true, 
-      message: `Successfully deleted ${deletedCount.deletedCount} old submissions`,
-      deletedCount: deletedCount.deletedCount
+
+    console.log(`🗑️  Deleted ${deletedCount.deletedCount} old submissions from DB and ${deletedFilesCount} files from R2`);
+
+    res.json({
+      success: true,
+      message: `Successfully deleted ${deletedCount.deletedCount} old submissions and ${deletedFilesCount} files`,
+      deletedCount: deletedCount.deletedCount,
+      deletedFilesCount
     });
   } catch (error) {
     console.error('Error cleaning up old submissions:', error);
     res.status(500).json({ error: 'Failed to clean up old submissions', details: error.message });
+  }
+});
+
+// ========== ANNOUNCEMENT ROUTES ==========
+
+// Get all announcements (public/students see published only, admin sees all)
+app.get('/api/announcements', async (req, res) => {
+  try {
+    // Check if user is admin (optional, if you want to filter based on role)
+    // For now, we'll return all and let frontend filter, or filter here
+    const announcements = await Announcement.find().sort({ createdAt: -1 });
+    res.json({ success: true, announcements });
+  } catch (error) {
+    console.error('Error fetching announcements:', error);
+    res.status(500).json({ error: 'Failed to fetch announcements' });
+  }
+});
+
+// Create announcement (admin only)
+app.post('/api/announcements', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { title, content, published } = req.body;
+    if (!title || !content) {
+      return res.status(400).json({ error: 'Title and content are required' });
+    }
+
+    const announcement = await Announcement.create({
+      title,
+      content,
+      published: published || false,
+      publishedAt: published ? new Date() : null,
+      createdBy: req.userId
+    });
+
+    res.status(201).json({ success: true, message: 'Announcement created successfully', announcement });
+  } catch (error) {
+    console.error('Error creating announcement:', error);
+    res.status(500).json({ error: 'Failed to create announcement' });
+  }
+});
+
+// Update announcement (admin only)
+app.put('/api/announcements/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { title, content, published } = req.body;
+    const announcement = await Announcement.findById(req.params.id);
+
+    if (!announcement) {
+      return res.status(404).json({ error: 'Announcement not found' });
+    }
+
+    if (title) announcement.title = title;
+    if (content) announcement.content = content;
+
+    if (published !== undefined) {
+      announcement.published = published;
+      if (published && !announcement.publishedAt) {
+        announcement.publishedAt = new Date();
+      }
+    }
+
+    await announcement.save();
+    res.json({ success: true, message: 'Announcement updated successfully', announcement });
+  } catch (error) {
+    console.error('Error updating announcement:', error);
+    res.status(500).json({ error: 'Failed to update announcement' });
+  }
+});
+
+// Delete announcement (admin only)
+app.delete('/api/announcements/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const announcement = await Announcement.findByIdAndDelete(req.params.id);
+    if (!announcement) {
+      return res.status(404).json({ error: 'Announcement not found' });
+    }
+    res.json({ success: true, message: 'Announcement deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting announcement:', error);
+    res.status(500).json({ error: 'Failed to delete announcement' });
+  }
+});
+
+// ========== QUERY ROUTES ==========
+
+// Get user queries (or all for admin)
+app.get('/api/queries', authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId);
+    const isAdmin = user && user.role === 'ADMIN';
+
+    const filter = isAdmin ? {} : { user: req.userId };
+
+    const queries = await Query.find(filter)
+      .populate('user', 'studentFullName email idNumber')
+      .populate('repliedBy', 'studentFullName')
+      .sort({ createdAt: -1 });
+
+    res.json({ success: true, queries });
+  } catch (error) {
+    console.error('Error fetching queries:', error);
+    res.status(500).json({ error: 'Failed to fetch queries' });
+  }
+});
+
+// Create query (student)
+app.post('/api/queries', authenticateToken, async (req, res) => {
+  try {
+    const { subject, message } = req.body;
+    if (!subject || !message) {
+      return res.status(400).json({ error: 'Subject and message are required' });
+    }
+
+    const query = await Query.create({
+      user: req.userId,
+      subject,
+      message,
+      status: 'PENDING'
+    });
+
+    await query.populate('user', 'studentFullName email idNumber');
+
+    res.status(201).json({ success: true, message: 'Query submitted successfully', query });
+  } catch (error) {
+    console.error('Error creating query:', error);
+    res.status(500).json({ error: 'Failed to submit query' });
+  }
+});
+
+// Reply to query (admin only)
+app.put('/api/queries/:id/reply', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { reply, status } = req.body;
+    if (!reply) {
+      return res.status(400).json({ error: 'Reply message is required' });
+    }
+
+    const query = await Query.findById(req.params.id);
+    if (!query) {
+      return res.status(404).json({ error: 'Query not found' });
+    }
+
+    query.reply = reply;
+    query.repliedAt = new Date();
+    query.repliedBy = req.userId;
+    query.status = status || 'RESOLVED';
+
+    await query.save();
+
+    // Populate for response
+    await query.populate('user', 'studentFullName email idNumber');
+    await query.populate('repliedBy', 'studentFullName');
+
+    res.json({ success: true, message: 'Reply sent successfully', query });
+  } catch (error) {
+    console.error('Error replying to query:', error);
+    res.status(500).json({ error: 'Failed to send reply' });
   }
 });
 

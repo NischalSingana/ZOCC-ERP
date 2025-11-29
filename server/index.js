@@ -16,6 +16,7 @@ import Submission from './models/Submission.js';
 import Attendance from './models/Attendance.js';
 import Announcement from './models/Announcement.js';
 import Project from './models/Project.js';
+import ProjectSubmission from './models/ProjectSubmission.js';
 import Query from './models/Query.js';
 
 dotenv.config();
@@ -1135,7 +1136,7 @@ app.get('/api/files/:filePath(*)', async (req, res) => {
     const filePath = decodeURIComponent(req.params.filePath);
     console.log('Proxy requesting file:', filePath); // Debug log
 
-    if (!filePath || !filePath.startsWith('submissions/')) {
+    if (!filePath || (!filePath.startsWith('submissions/') && !filePath.startsWith('project-submissions/'))) {
       return res.status(403).json({ error: 'Access denied' });
     }
 
@@ -1618,6 +1619,156 @@ app.delete('/api/projects/:id', authenticateToken, requireAdmin, async (req, res
   } catch (error) {
     console.error('Error deleting project:', error);
     res.status(500).json({ error: 'Failed to delete project' });
+  }
+});
+
+// ========== PROJECT SUBMISSION ROUTES ==========
+
+// Upload project submission
+app.post('/api/project-submissions', authenticateToken, upload.single('file'), handleMulterError, async (req, res) => {
+  try {
+    const { projectId, notes } = req.body;
+
+    // Validate input
+    if (!projectId) {
+      return res.status(400).json({ error: 'Project ID is required' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'File is required' });
+    }
+
+    // Check R2 configuration
+    if (!r2Client || !R2_BUCKET_NAME) {
+      return res.status(503).json({
+        error: 'File upload service is not configured. Please contact administrator.',
+        details: 'R2 storage not properly configured'
+      });
+    }
+
+    // Validate project exists and is active
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+    if (!project.isActive) {
+      return res.status(400).json({ error: 'Project is not active' });
+    }
+
+    // Determine file type
+    const mimeType = req.file.mimetype;
+    let fileType = 'image';
+    if (mimeType === 'application/pdf') fileType = 'pdf';
+    else if (mimeType === 'application/msword') fileType = 'doc';
+    else if (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') fileType = 'docx';
+    else if (mimeType === 'application/zip' || mimeType === 'application/x-zip-compressed') fileType = 'zip';
+
+    // Generate unique file name
+    const fileExtension = req.file.originalname.split('.').pop().toLowerCase();
+    const uniqueFileName = `project-submissions/${req.userId}/${projectId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
+
+    console.log(`📤 Uploading project submission to R2: ${uniqueFileName}`);
+
+    // Upload to R2 with timeout
+    try {
+      await withTimeout(
+        r2Client.send(new PutObjectCommand({
+          Bucket: R2_BUCKET_NAME,
+          Key: uniqueFileName,
+          Body: req.file.buffer,
+          ContentType: req.file.mimetype,
+        })),
+        30000, // 30 second timeout
+        'R2 upload timeout'
+      );
+      console.log(`✅ Project submission uploaded successfully to R2: ${uniqueFileName}`);
+    } catch (r2Error) {
+      console.error('❌ R2 upload error:', r2Error);
+      let errorMessage = 'Failed to upload file to storage';
+      if (r2Error.message === 'R2 upload timeout') {
+        errorMessage = 'Upload timeout. The file may be too large or the connection is slow.';
+      }
+      return res.status(500).json({
+        error: errorMessage,
+        details: r2Error.message
+      });
+    }
+
+    // Store submission in database
+    const fileUrl = uniqueFileName;
+
+    try {
+      const submission = await ProjectSubmission.create({
+        userId: req.userId,
+        projectId,
+        fileUrl,
+        fileName: req.file.originalname,
+        fileType,
+        notes: notes || '',
+        status: 'PENDING'
+      });
+
+      await submission.populate({ path: 'projectId', select: 'title description', model: 'Project' });
+
+      console.log(`✅ Project submission created in database: ${submission._id}`);
+
+      res.status(201).json({
+      success: true,
+        message: 'Project submission uploaded successfully',
+        submission
+      });
+    } catch (dbError) {
+      console.error('❌ Database error creating project submission:', dbError);
+      return res.status(500).json({
+        error: 'File uploaded but failed to save submission record. Please contact administrator.',
+        details: dbError.message
+      });
+    }
+  } catch (error) {
+    console.error('❌ Unexpected error in project submission endpoint:', error);
+    res.status(500).json({
+      error: 'Failed to upload project submission. Please try again.',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// Get user's project submissions
+app.get('/api/project-submissions', authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId);
+    const isAdmin = user && user.role?.toUpperCase() === 'ADMIN';
+
+    const query = isAdmin ? {} : { userId: req.userId };
+
+    const submissions = await ProjectSubmission.find(query)
+      .populate({ path: 'projectId', select: 'title description isActive', model: 'Project' })
+      .populate({ path: 'userId', select: 'studentFullName email idNumber', model: 'User' })
+      .sort({ submittedAt: -1 })
+      .lean();
+
+    // Generate signed URLs for file access
+    const submissionsWithUrls = await Promise.all(submissions.map(async (sub) => {
+      const subObj = { ...sub };
+      if (subObj.fileUrl && subObj.fileUrl.startsWith('project-submissions/') && r2Client && R2_BUCKET_NAME) {
+        try {
+          const command = new GetObjectCommand({
+            Bucket: R2_BUCKET_NAME,
+            Key: subObj.fileUrl
+          });
+          subObj.fileUrl = await getSignedUrl(r2Client, command, { expiresIn: 3600 });
+        } catch (error) {
+          console.error(`Error generating signed URL for ${subObj.fileUrl}:`, error.message);
+          subObj.fileUrl = `${req.protocol}://${req.get('host')}/api/files/${encodeURIComponent(subObj.fileUrl)}`;
+        }
+      }
+      return subObj;
+    }));
+
+    res.json({ success: true, submissions: submissionsWithUrls });
+  } catch (error) {
+    console.error('Error fetching project submissions:', error);
+    res.status(500).json({ error: 'Failed to fetch project submissions' });
   }
 });
 

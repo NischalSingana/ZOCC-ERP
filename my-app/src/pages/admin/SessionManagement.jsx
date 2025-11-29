@@ -43,8 +43,9 @@ const SessionManagement = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const sessionId = editingSession?.id || editingSession?._id;
       const url = editingSession
-        ? `/api/sessions/${editingSession.id}`
+        ? `/api/sessions/${sessionId?.toString() || sessionId}`
         : '/api/sessions';
       const method = editingSession ? 'put' : 'post';
 
@@ -79,15 +80,21 @@ const SessionManagement = () => {
   };
 
   const handleDelete = async (sessionId) => {
+    if (!sessionId) {
+      toast.error('Invalid session ID');
+      return;
+    }
+    
     if (!confirm('Are you sure you want to delete this session?')) return;
 
     try {
-      await axiosInstance.delete(`/api/sessions/${sessionId}`);
+      const idString = sessionId?.toString() || sessionId;
+      await axiosInstance.delete(`/api/sessions/${idString}`);
       toast.success('Session deleted!');
       fetchSessions();
     } catch (error) {
       console.error('Error deleting session:', error);
-      toast.error('Failed to delete session');
+      toast.error(error.response?.data?.error || 'Failed to delete session');
     }
   };
 
@@ -128,7 +135,7 @@ const SessionManagement = () => {
             <Edit size={18} className="text-zocc-blue-400" />
           </button>
           <button
-            onClick={() => handleDelete(session.id)}
+            onClick={() => handleDelete(session.id || session._id)}
             className="p-2 hover:bg-red-900/20 rounded-lg transition-colors"
           >
             <Trash2 size={18} className="text-red-400" />
@@ -309,7 +316,7 @@ const SessionManagement = () => {
         <Table
           data={sessions}
           columns={columns}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.id || item._id}
           emptyMessage="No sessions found"
         />
       </div>

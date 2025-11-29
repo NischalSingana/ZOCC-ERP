@@ -17,9 +17,8 @@ const Announcements = () => {
       setLoading(true);
       const response = await axiosInstance.get('/api/announcements');
       if (response.data?.success) {
-        // Only show published announcements for students
-        const published = response.data.announcements.filter((a) => a.published);
-        setAnnouncements(published || []);
+        // Backend already filters published announcements for students
+        setAnnouncements(response.data.announcements || []);
       }
     } catch (error) {
       console.error('Error fetching announcements:', error);
@@ -60,7 +59,7 @@ const Announcements = () => {
         ) : (
           announcements.map((announcement) => (
             <div
-              key={announcement.id}
+              key={announcement.id || announcement._id}
               onClick={() => setSelectedAnnouncement(announcement)}
               className="bg-zocc-blue-800/30 backdrop-blur-lg rounded-lg p-6 border border-zocc-blue-700/30 cursor-pointer hover:bg-zocc-blue-800/40 transition-all"
             >

@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import axiosInstance from '../../api/axiosConfig';
 import Table from '../../components/Table';
 import toast from 'react-hot-toast';
-import { Calendar, Users, Upload, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Calendar, Users, Download, CheckCircle, XCircle, Clock } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 const AttendanceAdmin = () => {
   const [sessions, setSessions] = useState([]);
@@ -16,7 +17,10 @@ const AttendanceAdmin = () => {
 
   useEffect(() => {
     if (selectedSession) {
-      fetchAttendance(selectedSession.id);
+      const sessionId = selectedSession.id || selectedSession._id;
+      if (sessionId) {
+        fetchAttendance(sessionId);
+      }
     }
   }, [selectedSession]);
 
@@ -54,22 +58,84 @@ const AttendanceAdmin = () => {
 
   const handleMarkAttendance = async (studentId, status) => {
     try {
+      const sessionId = selectedSession?.id || selectedSession?._id;
+      if (!sessionId) {
+        toast.error('Please select a session first');
+        return;
+      }
+      
+      // Ensure userId is a string
+      const userIdString = studentId?.toString() || studentId;
+      
       await axiosInstance.post('/api/attendance', {
-        sessionId: selectedSession.id || selectedSession._id,
-        userId: studentId,
+        sessionId: sessionId.toString(),
+        userId: userIdString,
         status: status.toLowerCase(),
       });
       toast.success('Attendance marked successfully');
-      fetchAttendance(selectedSession.id || selectedSession._id);
+      fetchAttendance(sessionId);
     } catch (error) {
       console.error('Error marking attendance:', error);
       toast.error(error.response?.data?.error || 'Failed to mark attendance');
     }
   };
 
-  const handleBulkImport = () => {
-    // Handle CSV import
-    toast.info('CSV import feature coming soon');
+  const handleExportExcel = () => {
+    if (!selectedSession) {
+      toast.error('Please select a session first');
+      return;
+    }
+
+    if (!attendance || attendance.length === 0) {
+      toast.error('No attendance data to export');
+      return;
+    }
+
+    try {
+      // Prepare data for Excel
+      const excelData = attendance.map((item, index) => ({
+        'S.No': index + 1,
+        'Student Name': item.studentFullName || 'N/A',
+        'ID Number': item.idNumber || 'N/A',
+        'Email': item.email || 'N/A',
+        'Status': item.status ? item.status.toUpperCase() : 'Not Marked',
+        'Marked At': item.markedAt ? new Date(item.markedAt).toLocaleString() : 'N/A',
+        'Notes': item.notes || ''
+      }));
+
+      // Create workbook and worksheet
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(excelData);
+
+      // Set column widths
+      const colWidths = [
+        { wch: 8 },   // S.No
+        { wch: 25 },  // Student Name
+        { wch: 15 },  // ID Number
+        { wch: 30 },  // Email
+        { wch: 15 },  // Status
+        { wch: 20 },  // Marked At
+        { wch: 30 }   // Notes
+      ];
+      ws['!cols'] = colWidths;
+
+      // Add worksheet to workbook
+      XLSX.utils.book_append_sheet(wb, ws, 'Attendance');
+
+      // Generate filename with session title and date
+      const sessionTitle = selectedSession.title || 'Session';
+      const sessionDate = selectedSession.date 
+        ? new Date(selectedSession.date).toISOString().split('T')[0]
+        : new Date().toISOString().split('T')[0];
+      const filename = `Attendance_${sessionTitle.replace(/[^a-z0-9]/gi, '_')}_${sessionDate}.xlsx`;
+
+      // Write file
+      XLSX.writeFile(wb, filename);
+      toast.success('Attendance exported successfully');
+    } catch (error) {
+      console.error('Error exporting Excel:', error);
+      toast.error('Failed to export attendance');
+    }
   };
 
   const columns = [
@@ -80,7 +146,14 @@ const AttendanceAdmin = () => {
       key: 'status',
       header: 'Status',
       render: (item) => {
-        const status = item.status?.toUpperCase() || 'ABSENT';
+        const status = item.status?.toUpperCase();
+        if (!status || status === 'NULL' || status === 'UNDEFINED') {
+          return (
+            <span className="px-2 py-1 rounded text-xs bg-gray-500/20 text-gray-400">
+              Not Marked
+            </span>
+          );
+        }
         return (
           <span
             className={`px-2 py-1 rounded text-xs ${
@@ -147,13 +220,15 @@ const AttendanceAdmin = () => {
           <Calendar size={32} />
           Attendance Marking
         </h1>
-        <button
-          onClick={handleBulkImport}
-          className="px-6 py-3 bg-gradient-to-r from-zocc-blue-600 to-zocc-blue-500 text-white rounded-lg hover:from-zocc-blue-500 hover:to-zocc-blue-400 transition-all flex items-center gap-2"
-        >
-          <Upload size={20} />
-          Import CSV
-        </button>
+        {selectedSession && attendance.length > 0 && (
+          <button
+            onClick={handleExportExcel}
+            className="px-6 py-3 bg-gradient-to-r from-green-600 to-green-500 text-white rounded-lg hover:from-green-500 hover:to-green-400 transition-all flex items-center gap-2"
+          >
+            <Download size={20} />
+            Export Excel
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -12,7 +12,7 @@ const AnnouncementsAdmin = () => {
   const [formData, setFormData] = useState({
     title: '',
     content: '',
-    published: false,
+    published: true, // Default to published
   });
 
   useEffect(() => {
@@ -37,8 +37,9 @@ const AnnouncementsAdmin = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const announcementId = editingAnnouncement?.id || editingAnnouncement?._id;
       const url = editingAnnouncement
-        ? `/api/announcements/${editingAnnouncement.id}`
+        ? `/api/announcements/${announcementId}`
         : '/api/announcements';
       const method = editingAnnouncement ? 'put' : 'post';
 
@@ -50,7 +51,7 @@ const AnnouncementsAdmin = () => {
         );
         setShowForm(false);
         setEditingAnnouncement(null);
-        setFormData({ title: '', content: '', published: false });
+        setFormData({ title: '', content: '', published: true });
         fetchAnnouncements();
       }
     } catch (error) {
@@ -60,21 +61,28 @@ const AnnouncementsAdmin = () => {
   };
 
   const handleDelete = async (announcementId) => {
+    if (!announcementId) {
+      toast.error('Invalid announcement ID');
+      return;
+    }
+    
     if (!confirm('Are you sure you want to delete this announcement?')) return;
 
     try {
-      await axiosInstance.delete(`/api/announcements/${announcementId}`);
+      const idString = announcementId?.toString() || announcementId;
+      await axiosInstance.delete(`/api/announcements/${idString}`);
       toast.success('Announcement deleted!');
       fetchAnnouncements();
     } catch (error) {
       console.error('Error deleting announcement:', error);
-      toast.error('Failed to delete announcement');
+      toast.error(error.response?.data?.error || 'Failed to delete announcement');
     }
   };
 
   const handleTogglePublish = async (announcement) => {
     try {
-      await axiosInstance.put(`/api/announcements/${announcement.id}`, {
+      const announcementId = announcement?.id || announcement?._id;
+      await axiosInstance.put(`/api/announcements/${announcementId}`, {
         published: !announcement.published,
       });
       toast.success(
@@ -143,7 +151,7 @@ const AnnouncementsAdmin = () => {
             <Edit size={18} className="text-zocc-blue-400" />
           </button>
           <button
-            onClick={() => handleDelete(announcement.id)}
+            onClick={() => handleDelete(announcement.id || announcement._id)}
             className="p-2 hover:bg-red-900/20 rounded-lg transition-colors"
           >
             <Trash2 size={18} className="text-red-400" />
@@ -168,7 +176,7 @@ const AnnouncementsAdmin = () => {
           onClick={() => {
             setShowForm(true);
             setEditingAnnouncement(null);
-            setFormData({ title: '', content: '', published: false });
+            setFormData({ title: '', content: '', published: true });
           }}
           className="px-6 py-3 bg-gradient-to-r from-zocc-blue-600 to-zocc-blue-500 text-white rounded-lg hover:from-zocc-blue-500 hover:to-zocc-blue-400 transition-all flex items-center gap-2"
         >
@@ -245,7 +253,7 @@ const AnnouncementsAdmin = () => {
         <Table
           data={announcements}
           columns={columns}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.id || item._id}
           emptyMessage="No announcements found"
         />
       </div>

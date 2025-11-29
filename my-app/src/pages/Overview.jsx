@@ -61,19 +61,38 @@ const Overview = () => {
       today.setHours(0, 0, 0, 0);
       const upcoming = allSessions
         .filter(session => {
+          if (!session.date) return false;
           const sessionDate = new Date(session.date);
           sessionDate.setHours(0, 0, 0, 0);
           return sessionDate >= today;
         })
-        .sort((a, b) => new Date(a.date) - new Date(b.date))
+        .sort((a, b) => {
+          const dateA = new Date(a.date || 0);
+          const dateB = new Date(b.date || 0);
+          return dateA - dateB;
+        })
         .slice(0, 3)
-        .map(session => ({
-          title: session.title,
-          date: session.date,
-          time: session.time || 'TBA',
-          trainer: session.trainer || 'TBA',
-          type: 'Session'
-        }));
+        .map(session => {
+          const startTime = session.startTime 
+            ? new Date(session.startTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+            : null;
+          const endTime = session.endTime 
+            ? new Date(session.endTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+            : null;
+          const timeDisplay = startTime && endTime 
+            ? `${startTime} - ${endTime}`
+            : startTime 
+            ? startTime
+            : 'TBA';
+          
+          return {
+            title: session.title || 'Untitled Session',
+            date: session.date,
+            time: timeDisplay,
+            trainer: session.trainer || 'TBA',
+            type: 'Session'
+          };
+        });
 
       // Fetch announcements if endpoint exists
       try {
@@ -165,7 +184,7 @@ const Overview = () => {
                   <span className="text-green-400 text-sm font-medium">{stat.change}</span>
                 )}
               </div>
-              <h3 className="text-sm text-primary-400 mb-1">{stat.title}</h3>
+              <h3 className="text-sm text-zocc-blue-300 mb-1">{stat.title}</h3>
               <p className="text-3xl font-bold text-white">{stat.value}</p>
             </div>
           );
@@ -189,7 +208,7 @@ const Overview = () => {
               {upcomingSessions.map((session, idx) => (
                 <div
                   key={idx}
-                  className="bg-primary-800/50 rounded-lg p-4 border border-primary-700 hover:border-zocc-blue-600 transition-all"
+                  className="bg-zocc-blue-800/50 rounded-lg p-4 border border-zocc-blue-700 hover:border-zocc-blue-600 transition-all"
                 >
                   <div className="flex items-start justify-between mb-2">
                     <h3 className="text-white font-medium">{session.title}</h3>
@@ -197,12 +216,12 @@ const Overview = () => {
                       {session.type}
                     </span>
                   </div>
-                  <div className="flex items-center gap-4 text-sm text-primary-300">
+                  <div className="flex items-center gap-4 text-sm text-zocc-blue-300">
                     <span>{session.date ? new Date(session.date).toLocaleDateString() : 'TBA'}</span>
                     <span>•</span>
                     <span>{session.time}</span>
                   </div>
-                  <p className="text-sm text-primary-400 mt-2">
+                  <p className="text-sm text-zocc-blue-400 mt-2">
                     Trainer: {session.trainer}
                   </p>
                 </div>
@@ -224,30 +243,40 @@ const Overview = () => {
           ) : (
             <div className="space-y-4">
               {announcements.slice(0, 3).map((announcement, idx) => {
-                const priority = announcement.priority || 'medium';
-                const priorityColors = {
-                  high: 'border-l-red-500 bg-red-500/10',
-                  medium: 'border-l-yellow-500 bg-yellow-500/10',
-                  low: 'border-l-blue-500 bg-blue-500/10'
-                };
+                // Extract createdBy name safely
+                const createdBy = announcement.createdBy;
+                let authorName = 'Admin';
+                if (createdBy) {
+                  if (typeof createdBy === 'string') {
+                    authorName = createdBy;
+                  } else if (typeof createdBy === 'object') {
+                    authorName = createdBy.studentFullName || createdBy.name || createdBy.email || 'Admin';
+                  }
+                }
+                
                 return (
                   <div
-                    key={idx}
-                    className={`border-l-4 rounded-lg p-4 ${priorityColors[priority]} hover:bg-opacity-20 transition-all cursor-pointer`}
+                    key={announcement.id || announcement._id || idx}
+                    className="border-l-4 border-l-zocc-blue-500 bg-zocc-blue-500/10 rounded-lg p-4 hover:bg-zocc-blue-500/20 transition-all cursor-pointer"
                   >
                     <div className="flex items-start justify-between mb-2">
-                      <h3 className="text-white font-medium">{announcement.title || announcement.message}</h3>
-                      <span className="text-xs px-2 py-1 bg-primary-800 text-primary-300 rounded uppercase font-medium">
-                        {priority}
-                      </span>
+                      <h3 className="text-white font-medium">{announcement.title || 'Announcement'}</h3>
+                      {announcement.published && (
+                        <span className="text-xs px-2 py-1 bg-green-500/20 text-green-400 rounded uppercase font-medium">
+                          Published
+                        </span>
+                      )}
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-primary-400">
-                      <span>{announcement.author || announcement.createdBy || 'Admin'}</span>
+                    <p className="text-zocc-blue-300 text-sm mb-2 line-clamp-2">
+                      {announcement.content || announcement.message || ''}
+                    </p>
+                    <div className="flex items-center gap-2 text-sm text-zocc-blue-400">
+                      <span>{authorName}</span>
                       <span>•</span>
                       <span>
-                        {announcement.createdAt
-                          ? new Date(announcement.createdAt).toLocaleDateString()
-                          : announcement.date || 'Recently'}
+                        {announcement.createdAt || announcement.publishedAt
+                          ? new Date(announcement.createdAt || announcement.publishedAt).toLocaleDateString()
+                          : 'Recently'}
                       </span>
                     </div>
                   </div>

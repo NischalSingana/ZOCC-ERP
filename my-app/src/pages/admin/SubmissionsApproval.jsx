@@ -72,7 +72,7 @@ const SubmissionsApproval = () => {
       const response = await axiosInstance.put(`/api/submissions/${submissionId}`, {
         status: 'ACCEPTED',
       });
-
+      
       if (response.data?.success) {
         toast.success('Submission approved');
         fetchSubmissions();
@@ -89,7 +89,7 @@ const SubmissionsApproval = () => {
       const response = await axiosInstance.put(`/api/submissions/${submissionId}`, {
         status: 'REJECTED',
       });
-
+      
       if (response.data?.success) {
         toast.success('Submission rejected');
         fetchSubmissions();
@@ -109,28 +109,51 @@ const SubmissionsApproval = () => {
 
     try {
       let fileUrl = submission.fileUrl;
+      let fileKey = null;
 
+      // Extract the R2 key from the fileUrl
       if (fileUrl.startsWith('http')) {
-        const match = fileUrl.match(/(submissions\/.*)/);
+        // If it's a signed URL or full URL, extract the key
+        const match = fileUrl.match(/(submissions\/[^?]+)/);
         if (match) {
-          const rawKey = decodeURIComponent(match[1].split('?')[0]);
-          fileUrl = `${API_URL}/api/files/${encodeURIComponent(rawKey)}`;
+          fileKey = decodeURIComponent(match[1]);
+        } else {
+          // If we can't extract a key, try using the URL directly
+          const token = localStorage.getItem('authToken');
+          const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+          const response = await fetch(fileUrl, { headers });
+          if (response.ok) {
+            const blob = await response.blob();
+            downloadBlob(blob, submission);
+            return;
+          }
+          throw new Error('Failed to download from URL');
         }
       } else if (fileUrl.startsWith('submissions/')) {
-        fileUrl = `${API_URL}/api/files/${encodeURIComponent(fileUrl)}`;
+        fileKey = fileUrl;
+      } else {
+        toast.error('Invalid file URL format');
+        return;
       }
 
+      // Always use the proxy endpoint with the key for reliable downloads
+      const downloadUrl = `${API_URL}/api/files/${encodeURIComponent(fileKey)}`;
       const token = localStorage.getItem('authToken');
-      const headers = {};
-      if (token && fileUrl.includes(API_URL)) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
+      
+      // Always include Authorization header for admin downloads
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+      };
 
-      const response = await fetch(fileUrl, { headers });
+      const response = await fetch(downloadUrl, { 
+        headers,
+        method: 'GET'
+      });
 
       if (!response.ok) {
-        if (response.status === 404 && fileUrl.includes('%20')) {
-          const altUrl = fileUrl.replace(/%20/g, '+');
+        // Try alternative encoding if first attempt fails
+        if (response.status === 404) {
+          const altUrl = downloadUrl.replace(/%20/g, '+');
           const retryResponse = await fetch(altUrl, { headers });
           if (retryResponse.ok) {
             const blob = await retryResponse.blob();
@@ -138,19 +161,35 @@ const SubmissionsApproval = () => {
             return;
           }
         }
-        throw new Error('Download failed');
+        const errorText = await response.text().catch(() => 'Unknown error');
+        throw new Error(`Download failed: ${response.status} - ${errorText}`);
       }
 
       const blob = await response.blob();
       downloadBlob(blob, submission);
+      toast.success('File downloaded successfully');
     } catch (error) {
       console.error('Error downloading file:', error);
-      toast.error('Failed to download file');
-      let fileUrl = submission.fileUrl;
-      if (fileUrl.startsWith('submissions/') && !fileUrl.startsWith('http')) {
-        fileUrl = `${API_URL}/api/files/${encodeURIComponent(fileUrl)}`;
+      toast.error(error.message || 'Failed to download file');
+      
+      // Fallback: try opening in new tab
+      try {
+        let fileUrl = submission.fileUrl;
+        if (fileUrl.startsWith('submissions/') && !fileUrl.startsWith('http')) {
+          const token = localStorage.getItem('authToken');
+          fileUrl = `${API_URL}/api/files/${encodeURIComponent(fileUrl)}`;
+          if (token) {
+            // Try to download with token in URL (not ideal but as fallback)
+            window.open(fileUrl, '_blank');
+          } else {
+            window.open(fileUrl, '_blank');
+          }
+        } else if (fileUrl.startsWith('http')) {
+          window.open(fileUrl, '_blank');
+        }
+      } catch (fallbackError) {
+        console.error('Fallback download also failed:', fallbackError);
       }
-      window.open(fileUrl, '_blank');
     }
   };
 
@@ -273,14 +312,14 @@ const SubmissionsApproval = () => {
         const isImage = submission.fileType === 'image' ||
           (submission.fileName && /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(submission.fileName));
         return (
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
             {isImage ? (
               <ImageIcon size={18} className="text-zocc-blue-400" />
             ) : (
-              <FileText size={18} className="text-zocc-blue-400" />
+          <FileText size={18} className="text-zocc-blue-400" />
             )}
             <span className="text-white">{submission.fileName || 'Unknown file'}</span>
-          </div>
+        </div>
         );
       },
     },
@@ -290,16 +329,16 @@ const SubmissionsApproval = () => {
       render: (submission) => {
         const status = submission.status?.toUpperCase() || 'PENDING';
         return (
-          <span
+        <span
             className={`px-2 py-1 rounded text-xs ${status === 'ACCEPTED'
               ? 'bg-green-500/20 text-green-400'
               : status === 'REJECTED'
-                ? 'bg-red-500/20 text-red-400'
-                : 'bg-yellow-500/20 text-yellow-400'
-              }`}
-          >
+              ? 'bg-red-500/20 text-red-400'
+              : 'bg-yellow-500/20 text-yellow-400'
+          }`}
+        >
             {status}
-          </span>
+        </span>
         );
       },
     },
@@ -316,7 +355,7 @@ const SubmissionsApproval = () => {
         const isImage = submission.fileType === 'image' ||
           (submission.fileName && /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(submission.fileName));
         return (
-          <div className="flex gap-2">
+        <div className="flex gap-2">
             {isImage && (
               <button
                 onClick={() => handleViewImage(submission)}
@@ -340,32 +379,32 @@ const SubmissionsApproval = () => {
             >
               <Edit2 size={18} className="text-zocc-blue-400" />
             </button>
-            <button
-              onClick={() => handleDownload(submission)}
-              className="p-2 hover:bg-zocc-blue-800 rounded-lg transition-colors"
+          <button
+            onClick={() => handleDownload(submission)}
+            className="p-2 hover:bg-zocc-blue-800 rounded-lg transition-colors"
               title="Download File"
-            >
-              <Download size={18} className="text-zocc-blue-400" />
-            </button>
+          >
+            <Download size={18} className="text-zocc-blue-400" />
+          </button>
             {(submission.status?.toUpperCase() === 'PENDING' || !submission.status) && (
-              <>
-                <button
+            <>
+              <button
                   onClick={() => handleApprove(submission.id || submission._id)}
-                  className="p-2 hover:bg-green-900/20 rounded-lg transition-colors"
+                className="p-2 hover:bg-green-900/20 rounded-lg transition-colors"
                   title="Approve"
-                >
-                  <CheckCircle size={18} className="text-green-400" />
-                </button>
-                <button
+              >
+                <CheckCircle size={18} className="text-green-400" />
+              </button>
+              <button
                   onClick={() => handleReject(submission.id || submission._id)}
-                  className="p-2 hover:bg-red-900/20 rounded-lg transition-colors"
+                className="p-2 hover:bg-red-900/20 rounded-lg transition-colors"
                   title="Reject"
-                >
-                  <XCircle size={18} className="text-red-400" />
-                </button>
-              </>
-            )}
-          </div>
+              >
+                <XCircle size={18} className="text-red-400" />
+              </button>
+            </>
+          )}
+        </div>
         );
       },
     },
@@ -397,9 +436,9 @@ const SubmissionsApproval = () => {
               key={status}
               onClick={() => setFilter(status)}
               className={`px-4 py-2 rounded-lg transition-all capitalize ${filter === status
-                ? 'bg-zocc-blue-600 text-white'
-                : 'bg-zocc-blue-800/50 text-zocc-blue-300 hover:bg-zocc-blue-700/50'
-                }`}
+                  ? 'bg-zocc-blue-600 text-white'
+                  : 'bg-zocc-blue-800/50 text-zocc-blue-300 hover:bg-zocc-blue-700/50'
+              }`}
             >
               {status}
             </button>

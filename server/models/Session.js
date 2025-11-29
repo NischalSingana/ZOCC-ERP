@@ -14,14 +14,14 @@ const sessionSchema = new mongoose.Schema({
     maxlength: 1000
   },
   date: {
-    type: String,
-    required: true,
-    match: [/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format']
+    type: Date,
+    required: true
   },
-  time: {
-    type: String,
-    required: true,
-    match: [/^\d{2}:\d{2}$/, 'Time must be in HH:MM format']
+  startTime: {
+    type: Date
+  },
+  endTime: {
+    type: Date
   },
   venue: {
     type: String,
@@ -34,6 +34,19 @@ const sessionSchema = new mongoose.Schema({
     trim: true,
     maxlength: 100
   },
+  maxSeats: {
+    type: Number,
+    default: 50
+  },
+  joinLink: {
+    type: String,
+    trim: true
+  },
+  status: {
+    type: String,
+    enum: ['scheduled', 'completed', 'cancelled'],
+    default: 'scheduled'
+  },
   createdAt: {
     type: Date,
     default: Date.now
@@ -43,7 +56,7 @@ const sessionSchema = new mongoose.Schema({
 });
 
 // Create index for faster queries
-sessionSchema.index({ date: 1, time: 1 });
+sessionSchema.index({ date: 1, startTime: 1 });
 
 const Session = mongoose.models.Session || mongoose.model('Session', sessionSchema);
 

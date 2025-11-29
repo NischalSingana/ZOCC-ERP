@@ -44,7 +44,6 @@ const RegisteredStudents = () => {
   );
 
   const handleViewStudent = (student) => {
-    // Navigate to student details with student ID
     window.location.href = `/dashboard/admin/student-details?id=${student.id || student._id}`;
   };
 

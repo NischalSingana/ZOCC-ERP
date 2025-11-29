@@ -40,6 +40,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
     { icon: BookOpen, label: 'Session Management', path: '/dashboard/admin/sessions' },
     { icon: FileText, label: 'Submissions Approval', path: '/dashboard/admin/submissions' },
     { icon: Megaphone, label: 'Announcements', path: '/dashboard/admin/announcements' },
+    { icon: MessageSquare, label: 'Queries', path: '/dashboard/admin/queries' },
     { icon: FolderKanban, label: 'Project Management', path: '/dashboard/admin/projects' },
     { icon: User, label: 'Profile', path: '/dashboard/profile' },
     { icon: HelpCircle, label: 'Contact', path: '/dashboard/contact' },
@@ -62,7 +63,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
       {/* Logo Section */}
       <div className="p-6 flex items-center justify-between border-b border-primary-800">
         <h1
-          className={`text-2xl font-bold text-zocc-blue-400 transition-all duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 w-0'
+          className={`text-2xl font-bold text-zocc-blue-400 transition-all duration-300 whitespace-nowrap overflow-hidden ${isOpen ? 'opacity-100' : 'opacity-0 w-0'
             }`}
         >
           ZeroOne ERP
@@ -106,13 +107,13 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
               key={idx}
               to={item.path}
               className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group ${active
-                  ? 'text-zocc-blue-400 bg-zocc-blue-900/30 font-medium border-l-2 border-zocc-blue-400'
-                  : 'text-primary-300 hover:text-zocc-blue-400 hover:bg-primary-800'
+                ? 'text-zocc-blue-400 bg-zocc-blue-900/30 font-medium border-l-2 border-zocc-blue-400'
+                : 'text-primary-300 hover:text-zocc-blue-400 hover:bg-primary-800'
                 }`}
             >
               <Icon size={20} className="group-hover:scale-110 transition-transform flex-shrink-0" />
               <span
-                className={`transition-all duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 w-0'
+                className={`transition-all duration-300 whitespace-nowrap overflow-hidden ${isOpen ? 'opacity-100' : 'opacity-0 w-0'
                   }`}
               >
                 {item.label}
@@ -130,7 +131,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
         >
           <LogOut size={20} className="group-hover:scale-110 transition-transform flex-shrink-0" />
           <span
-            className={`transition-all duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 w-0'
+            className={`transition-all duration-300 whitespace-nowrap overflow-hidden ${isOpen ? 'opacity-100' : 'opacity-0 w-0'
               }`}
           >
             Logout

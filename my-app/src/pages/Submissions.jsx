@@ -177,10 +177,10 @@ const Submissions = () => {
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
     });
   };
 
@@ -234,7 +234,7 @@ const Submissions = () => {
                   {(() => {
                     let fileUrl = submission.fileUrl || submission.imageUrl;
                     const fileType = submission.fileType || 'image';
-                    
+
                     // Use proxy endpoint if fileUrl is from R2 and direct access fails
                     // This helps bypass CORS issues
                     if (fileUrl && fileUrl.includes('r2.dev')) {
@@ -244,13 +244,13 @@ const Submissions = () => {
                         fileUrl = `${API_URL}/api/files/${urlMatch[1]}`;
                       }
                     }
-                    
+
                     if (fileType === 'image') {
                       return (
                         <>
-                          <img 
-                            src={fileUrl} 
-                            alt="Submission" 
+                          <img
+                            src={fileUrl}
+                            alt="Submission"
                             className="w-full h-32 object-cover hover:scale-105 transition-transform duration-300 cursor-pointer"
                             loading="lazy"
                             onClick={() => {
@@ -274,7 +274,7 @@ const Submissions = () => {
                               }
                             }}
                           />
-                          <div 
+                          <div
                             className="file-fallback hidden items-center justify-center h-32 bg-zocc-blue-800/50 flex-col cursor-pointer hover:bg-zocc-blue-700/50 transition-colors"
                             onClick={() => {
                               const fallbackUrl = fileUrl.includes('r2.dev') ? `${API_URL}/api/files/${fileUrl.match(/r2\.dev\/(.+)$/)?.[1] || ''}` : fileUrl;
@@ -284,9 +284,9 @@ const Submissions = () => {
                           >
                             <ImageIcon className="text-zocc-blue-400 mb-2" size={32} />
                             <p className="text-zocc-blue-300 text-sm">Image not available</p>
-                            <a 
+                            <a
                               href={fileUrl.includes('r2.dev') ? `${API_URL}/api/files/${fileUrl.match(/r2\.dev\/(.+)$/)?.[1] || ''}` : fileUrl}
-                              target="_blank" 
+                              target="_blank"
                               rel="noopener noreferrer"
                               className="text-zocc-blue-400 text-xs mt-2 hover:underline"
                               onClick={(e) => e.stopPropagation()}
@@ -305,11 +305,11 @@ const Submissions = () => {
                           downloadUrl = `${API_URL}/api/files/${urlMatch[1]}`;
                         }
                       }
-                      
+
                       return (
-                        <a 
-                          href={downloadUrl} 
-                          target="_blank" 
+                        <a
+                          href={downloadUrl}
+                          target="_blank"
                           rel="noopener noreferrer"
                           className="flex items-center justify-center h-32 bg-zocc-blue-800/50 hover:bg-zocc-blue-700/50 transition-colors"
                         >
@@ -422,7 +422,7 @@ const Submissions = () => {
                 <label className="block text-sm font-medium text-zocc-blue-300 mb-2">
                   Session *
                 </label>
-                <select 
+                <select
                   className="w-full bg-zocc-blue-800/50 border border-zocc-blue-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-zocc-blue-500"
                   value={selectedSessionId}
                   onChange={(e) => setSelectedSessionId(e.target.value)}
@@ -480,7 +480,7 @@ const Submissions = () => {
 
       {/* Image View Modal - Full Screen */}
       {imageModalOpen && selectedImageUrl && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 p-4"
           onClick={() => {
             setImageModalOpen(false);
@@ -498,12 +498,12 @@ const Submissions = () => {
             >
               <XCircle size={24} />
             </button>
-            <img 
-              src={selectedImageUrl} 
-              alt="Full size submission" 
+            <img
+              src={selectedImageUrl}
+              alt="Full size submission"
               className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
               onClick={(e) => e.stopPropagation()}
-              onError={(e) => {
+              onError={() => {
                 console.error('Image failed to load in modal:', selectedImageUrl);
               }}
             />

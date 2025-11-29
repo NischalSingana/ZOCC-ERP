@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import axiosInstance from '../../api/axiosConfig';
 import Table from '../../components/Table';
 import toast from 'react-hot-toast';
-import { CheckCircle, XCircle, Download, FileText, Filter, Eye, Image as ImageIcon, Trash2 } from 'lucide-react';
+import { CheckCircle, XCircle, Download, FileText, Filter, Eye, Image as ImageIcon, Trash2, Edit2, User } from 'lucide-react';
 import { API_URL } from '../../utils/apiUrl';
 
 const SubmissionsApproval = () => {
@@ -13,6 +13,15 @@ const SubmissionsApproval = () => {
   const [selectedImageUrl, setSelectedImageUrl] = useState(null);
   const [cleaningUp, setCleaningUp] = useState(false);
 
+  // Edit State
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingSubmission, setEditingSubmission] = useState(null);
+  const [editForm, setEditForm] = useState({ notes: '', feedback: '', status: '' });
+
+  // View Student State
+  const [viewStudentModalOpen, setViewStudentModalOpen] = useState(false);
+  const [viewingStudent, setViewingStudent] = useState(null);
+
   useEffect(() => {
     fetchSubmissions();
   }, [filter]);
@@ -20,14 +29,24 @@ const SubmissionsApproval = () => {
   // Close modal on ESC key
   useEffect(() => {
     const handleEscape = (e) => {
-      if (e.key === 'Escape' && imageModalOpen) {
-        setImageModalOpen(false);
-        setSelectedImageUrl(null);
+      if (e.key === 'Escape') {
+        if (imageModalOpen) {
+          setImageModalOpen(false);
+          setSelectedImageUrl(null);
+        }
+        if (editModalOpen) {
+          setEditModalOpen(false);
+          setEditingSubmission(null);
+        }
+        if (viewStudentModalOpen) {
+          setViewStudentModalOpen(false);
+          setViewingStudent(null);
+        }
       }
     };
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
-  }, [imageModalOpen]);
+  }, [imageModalOpen, editModalOpen, viewStudentModalOpen]);
 
   const fetchSubmissions = async () => {
     try {
@@ -89,53 +108,44 @@ const SubmissionsApproval = () => {
     }
 
     try {
-      // Get the file URL (signed URL or proxy endpoint)
       let fileUrl = submission.fileUrl;
 
-      // If it's a full URL, try to extract the key to use the proxy endpoint
-      // This avoids CORS issues with direct R2/S3 downloads in the browser
       if (fileUrl.startsWith('http')) {
         const match = fileUrl.match(/(submissions\/.*)/);
         if (match) {
-          // Found the key, use proxy
-          const key = match[1].split('?')[0]; // Remove query params if any
-          fileUrl = `${API_URL}/api/files/${encodeURIComponent(key)}`;
+          const rawKey = decodeURIComponent(match[1].split('?')[0]);
+          fileUrl = `${API_URL}/api/files/${encodeURIComponent(rawKey)}`;
         }
       } else if (fileUrl.startsWith('submissions/')) {
-        // It's already a key, use proxy
         fileUrl = `${API_URL}/api/files/${encodeURIComponent(fileUrl)}`;
       }
 
-      // Fetch the file as a blob with auth headers
       const token = localStorage.getItem('authToken');
       const headers = {};
-
-      // Only add auth header if it's an internal API call
       if (token && fileUrl.includes(API_URL)) {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
       const response = await fetch(fileUrl, { headers });
-      if (!response.ok) throw new Error('Download failed');
+
+      if (!response.ok) {
+        if (response.status === 404 && fileUrl.includes('%20')) {
+          const altUrl = fileUrl.replace(/%20/g, '+');
+          const retryResponse = await fetch(altUrl, { headers });
+          if (retryResponse.ok) {
+            const blob = await retryResponse.blob();
+            downloadBlob(blob, submission);
+            return;
+          }
+        }
+        throw new Error('Download failed');
+      }
 
       const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-
-      // Create a temporary link to trigger download
-      const link = document.createElement('a');
-      link.href = url;
-      // Use the original filename or a default one
-      link.download = submission.fileName || `submission-${submission.id || submission._id}`;
-      document.body.appendChild(link);
-      link.click();
-
-      // Cleanup
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      downloadBlob(blob, submission);
     } catch (error) {
       console.error('Error downloading file:', error);
       toast.error('Failed to download file');
-      // Fallback to opening in new tab if blob fetch fails
       let fileUrl = submission.fileUrl;
       if (fileUrl.startsWith('submissions/') && !fileUrl.startsWith('http')) {
         fileUrl = `${API_URL}/api/files/${encodeURIComponent(fileUrl)}`;
@@ -144,22 +154,30 @@ const SubmissionsApproval = () => {
     }
   };
 
+  const downloadBlob = (blob, submission) => {
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = submission.fileName || `submission-${submission.id || submission._id}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  };
+
   const handleViewImage = (submission) => {
     if (!submission.fileUrl) {
       toast.error('File URL is not available');
       return;
     }
-    // Check if it's an image file
     const isImage = submission.fileType === 'image' ||
       (submission.fileName && /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(submission.fileName));
 
     if (!isImage) {
-      // If not an image, just download it
       handleDownload(submission);
       return;
     }
 
-    // Get the file URL (signed URL or proxy endpoint)
     let fileUrl = submission.fileUrl;
     if (fileUrl.startsWith('submissions/') && !fileUrl.startsWith('http')) {
       fileUrl = `${API_URL}/api/files/${encodeURIComponent(fileUrl)}`;
@@ -179,13 +197,55 @@ const SubmissionsApproval = () => {
       const response = await axiosInstance.delete('/api/admin/submissions/cleanup-old');
       if (response.data?.success) {
         toast.success(`Successfully deleted ${response.data.deletedCount} old submissions`);
-        fetchSubmissions(); // Refresh the list
+        fetchSubmissions();
       }
     } catch (error) {
       console.error('Error cleaning up old submissions:', error);
       toast.error(error.response?.data?.error || 'Failed to clean up old submissions');
     } finally {
       setCleaningUp(false);
+    }
+  };
+
+  const handleEdit = (submission) => {
+    setEditingSubmission(submission);
+    setEditForm({
+      notes: submission.notes || '',
+      feedback: submission.feedback || '',
+      status: submission.status || 'PENDING'
+    });
+    setEditModalOpen(true);
+  };
+
+  const handleUpdateSubmission = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await axiosInstance.put(`/api/submissions/${editingSubmission.id || editingSubmission._id}`, {
+        status: editForm.status,
+        feedback: editForm.feedback,
+        notes: editForm.notes
+      });
+
+      if (response.data?.success) {
+        toast.success('Submission updated successfully');
+        setEditModalOpen(false);
+        setEditingSubmission(null);
+        fetchSubmissions();
+      }
+    } catch (error) {
+      console.error('Error updating submission:', error);
+      toast.error(error.response?.data?.error || 'Failed to update submission');
+    }
+  };
+
+  const handleViewStudent = (submission) => {
+    const student = submission.userId || submission.user;
+    console.log('Viewing student details:', student);
+    if (student) {
+      setViewingStudent(student);
+      setViewStudentModalOpen(true);
+    } else {
+      toast.error('Student details not available');
     }
   };
 
@@ -266,6 +326,20 @@ const SubmissionsApproval = () => {
                 <Eye size={18} className="text-zocc-blue-400" />
               </button>
             )}
+            <button
+              onClick={() => handleViewStudent(submission)}
+              className="p-2 hover:bg-zocc-blue-800 rounded-lg transition-colors"
+              title="View Student Details"
+            >
+              <User size={18} className="text-zocc-blue-400" />
+            </button>
+            <button
+              onClick={() => handleEdit(submission)}
+              className="p-2 hover:bg-zocc-blue-800 rounded-lg transition-colors"
+              title="Edit Details"
+            >
+              <Edit2 size={18} className="text-zocc-blue-400" />
+            </button>
             <button
               onClick={() => handleDownload(submission)}
               className="p-2 hover:bg-zocc-blue-800 rounded-lg transition-colors"
@@ -378,9 +452,156 @@ const SubmissionsApproval = () => {
           </div>
         </div>
       )}
+
+      {/* Edit Submission Modal */}
+      {editModalOpen && editingSubmission && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-zocc-blue-900 border border-zocc-blue-700 rounded-lg p-6 w-full max-w-lg shadow-2xl">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-white">Edit Submission</h2>
+              <button
+                onClick={() => {
+                  setEditModalOpen(false);
+                  setEditingSubmission(null);
+                }}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <XCircle size={24} />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateSubmission} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  Status
+                </label>
+                <select
+                  value={editForm.status}
+                  onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                  className="w-full px-4 py-2 bg-black border border-zocc-blue-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-zocc-blue-500"
+                >
+                  <option value="PENDING">Pending</option>
+                  <option value="ACCEPTED">Accepted</option>
+                  <option value="REJECTED">Rejected</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  Student Notes (Editable)
+                </label>
+                <textarea
+                  value={editForm.notes}
+                  onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                  className="w-full px-4 py-2 bg-black border border-zocc-blue-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-zocc-blue-500 min-h-[100px]"
+                  placeholder="Student notes..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  Admin Feedback
+                </label>
+                <textarea
+                  value={editForm.feedback}
+                  onChange={(e) => setEditForm({ ...editForm, feedback: e.target.value })}
+                  className="w-full px-4 py-2 bg-black border border-zocc-blue-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-zocc-blue-500 min-h-[100px]"
+                  placeholder="Feedback for student..."
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditModalOpen(false);
+                    setEditingSubmission(null);
+                  }}
+                  className="px-4 py-2 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-lg bg-zocc-blue-600 text-white hover:bg-zocc-blue-500 transition-colors flex items-center gap-2"
+                >
+                  <CheckCircle size={18} />
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Student Details Modal */}
+      {viewStudentModalOpen && viewingStudent && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-zocc-blue-900 border border-zocc-blue-700 rounded-lg p-6 w-full max-w-md shadow-2xl">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                <User size={24} className="text-zocc-blue-400" />
+                Student Details
+              </h2>
+              <button
+                onClick={() => {
+                  setViewStudentModalOpen(false);
+                  setViewingStudent(null);
+                }}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <XCircle size={24} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-black/40 p-4 rounded-lg border border-zocc-blue-800">
+                <p className="text-sm text-gray-400 mb-1">Full Name</p>
+                <p className="text-lg font-semibold text-white">
+                  {viewingStudent.studentFullName || viewingStudent.name || viewingStudent.email || 'N/A'}
+                  {(!viewingStudent.studentFullName && !viewingStudent.name) && <span className="text-xs text-gray-500 ml-2">(Name not set)</span>}
+                </p>
+              </div>
+
+              <div className="bg-black/40 p-4 rounded-lg border border-zocc-blue-800">
+                <p className="text-sm text-gray-400 mb-1">Email Address</p>
+                <p className="text-white">{viewingStudent.email || 'N/A'}</p>
+              </div>
+
+              <div className="bg-black/40 p-4 rounded-lg border border-zocc-blue-800">
+                <p className="text-sm text-gray-400 mb-1">ID Number</p>
+                <p className="text-white font-mono">{viewingStudent.idNumber || 'N/A'}</p>
+              </div>
+
+              <div className="bg-black/40 p-4 rounded-lg border border-zocc-blue-800">
+                <p className="text-sm text-gray-400 mb-1">Phone Number</p>
+                <p className="text-white">{viewingStudent.phone || 'N/A'}</p>
+              </div>
+
+              <div className="bg-black/40 p-4 rounded-lg border border-zocc-blue-800">
+                <p className="text-sm text-gray-400 mb-1">Role</p>
+                <span className="px-2 py-1 rounded text-xs bg-zocc-blue-600/30 text-zocc-blue-300 border border-zocc-blue-600/50">
+                  {viewingStudent.role || 'STUDENT'}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex justify-end mt-6">
+              <button
+                onClick={() => {
+                  setViewStudentModalOpen(false);
+                  setViewingStudent(null);
+                }}
+                className="px-4 py-2 rounded-lg bg-zocc-blue-600 text-white hover:bg-zocc-blue-500 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 export default SubmissionsApproval;
-

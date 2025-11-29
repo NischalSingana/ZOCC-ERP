@@ -10,7 +10,7 @@ import { API_URL } from '../utils/apiUrl'
 const fetchWithTimeout = async (url, options = {}, timeout = 30000) => {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), timeout)
-  
+
   try {
     const response = await fetch(url, {
       ...options,
@@ -38,7 +38,7 @@ export default function Login() {
   const [captchaVerified, setCaptchaVerified] = useState(false)
   const [loginLoading, setLoginLoading] = useState(false)
   const [loginError, setLoginError] = useState('')
-  
+
   const [studentFullName, setStudentFullName] = useState('')
   const [idNumber, setIdNumber] = useState('')
   const [regEmail, setRegEmail] = useState('')
@@ -95,19 +95,19 @@ export default function Login() {
           <h2 className="animation" style={{ ['--D']: 0, ['--S']: 21 }}>
             {isAdminMode ? 'Admin Login' : 'Login'}
           </h2>
-          <form onSubmit={(e)=>e.preventDefault()}>
+          <form onSubmit={(e) => e.preventDefault()}>
             <div className="input-box animation" style={{ ['--D']: 1, ['--S']: 22 }}>
-              <input type="email" required value={loginEmail} onChange={e=>setLoginEmail(e.target.value)} />
+              <input type="email" required value={loginEmail} onChange={e => setLoginEmail(e.target.value)} />
               <label>Email</label>
               <box-icon name='envelope' type='solid' color="gray"></box-icon>
             </div>
 
             <div className="input-box animation" style={{ ['--D']: 2, ['--S']: 23 }}>
-              <input 
-                type={showLoginPass ? 'text' : 'password'} 
-                required 
-                value={loginPass} 
-                onChange={e=>setLoginPass(e.target.value)} 
+              <input
+                type={showLoginPass ? 'text' : 'password'}
+                required
+                value={loginPass}
+                onChange={e => setLoginPass(e.target.value)}
               />
               <label>Password</label>
               <box-icon name='lock-alt' type='solid' color="gray"></box-icon>
@@ -140,17 +140,17 @@ export default function Login() {
             )}
 
             <div className="input-box animation" style={{ ['--D']: isAdminMode ? 3 : 4, ['--S']: isAdminMode ? 24 : 25 }}>
-              <button 
-                className="btn" 
-                type="submit" 
+              <button
+                className="btn"
+                type="submit"
                 disabled={(!isAdminMode && !captchaVerified) || loginLoading}
                 onClick={async (e) => {
                   e.preventDefault()
                   if ((!isAdminMode && !captchaVerified) || !loginEmail || !loginPass) return
-                  
+
                   setLoginLoading(true)
                   setLoginError('')
-                  
+
                   try {
                     const result = await login(loginEmail.toLowerCase().trim(), loginPass)
                     if (result.success) {
@@ -172,7 +172,7 @@ export default function Login() {
 
             {!isAdminMode && (
               <div className="regi-link animation" style={{ ['--D']: 5, ['--S']: 26 }}>
-                <p>Don't have an account? <br/> <a href="#" className="SignUpLink" onClick={(e)=>{e.preventDefault(); setActive(true)}}>Sign Up</a></p>
+                <p>Don't have an account? <br /> <a href="#" className="SignUpLink" onClick={(e) => { e.preventDefault(); setActive(true) }}>Sign Up</a></p>
               </div>
             )}
           </form>
@@ -199,306 +199,306 @@ export default function Login() {
         {!isAdminMode && (
           <div className="form-box Register">
             <h2 className="animation" style={{ ['--li']: 17, ['--S']: 0 }}>Register</h2>
-          <form onSubmit={(e)=>e.preventDefault()}>
-            <div className="input-box animation" style={{ ['--li']: 18, ['--S']: 1 }}>
-              <input 
-                type="text" 
-                required 
-                value={studentFullName} 
-                onChange={e=>setStudentFullName(e.target.value)} 
-              />
-              <label>Student Full Name</label>
-              <box-icon type='solid' name='user' color="gray"></box-icon>
-            </div>
-
-            <div className="input-box animation" style={{ ['--li']: 19, ['--S']: 2 }}>
-              <input 
-                type="text" 
-                required 
-                value={idNumber} 
-                onChange={e=>{
-                  const value = e.target.value.replace(/\D/g, '').slice(0, 10)
-                  setIdNumber(value)
-                  if (value.length === 10) {
-                    const generatedEmail = `${value}@kluniversity.in`
-                    setRegEmail(generatedEmail)
-                    setOtpSent(false)
-                    setEmailVerified(false)
-                    setOtp('')
-                    setOtpError('')
-                  } else {
-                    setRegEmail('')
-                    setOtpSent(false)
-                    setEmailVerified(false)
-                  }
-                }} 
-                placeholder="Enter 10-digit ID number"
-                maxLength={10}
-              />
-              <label>ID Number</label>
-              <box-icon name='id-card' type='solid' color="gray"></box-icon>
-            </div>
-
-            {idNumber.length === 10 && (
-              <div className="input-box animation" style={{ ['--li']: 19.3, ['--S']: 2.3 }}>
-                <input 
-                  type="email" 
-                  value={regEmail} 
-                  readOnly
-                  disabled
+            <form onSubmit={(e) => e.preventDefault()}>
+              <div className="input-box animation" style={{ ['--li']: 18, ['--S']: 1 }}>
+                <input
+                  type="text"
+                  required
+                  value={studentFullName}
+                  onChange={e => setStudentFullName(e.target.value)}
                 />
-                <label>Email (Auto-generated)</label>
-                <box-icon name='envelope' type='solid' color="gray"></box-icon>
+                <label>Student Full Name</label>
+                <box-icon type='solid' name='user' color="gray"></box-icon>
               </div>
-            )}
 
-            {idNumber.length === 10 && regEmail && (
-              <div className="input-box animation" style={{ ['--li']: 19.5, ['--S']: 2.5 }}>
-                <button
-                  type="button"
-                  className="btn-verify-email"
-                  onClick={async () => {
-                    if (!regEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(regEmail)) {
-                      setOtpError('Please enter a valid ID number')
-                      return
-                    }
-                    setOtpLoading(true)
-                    setOtpError('')
-                    try {
-                      const res = await fetchWithTimeout(`${API_URL}/api/auth/request-otp`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ email: regEmail })
-                      })
-                      
-                      if (!res.ok) {
-                        const data = await res.json().catch(() => ({}))
-                        throw new Error(data.error || `Server error: ${res.status}`)
-                      }
-                      
-                      const data = await res.json()
-                      setOtpSent(true)
+              <div className="input-box animation" style={{ ['--li']: 19, ['--S']: 2 }}>
+                <input
+                  type="text"
+                  required
+                  value={idNumber}
+                  onChange={e => {
+                    const value = e.target.value.replace(/\D/g, '').slice(0, 10)
+                    setIdNumber(value)
+                    if (value.length === 10) {
+                      const generatedEmail = `${value}@kluniversity.in`
+                      setRegEmail(generatedEmail)
+                      setOtpSent(false)
+                      setEmailVerified(false)
+                      setOtp('')
                       setOtpError('')
-                    } catch (err) {
-                      if (err.name === 'TypeError' && err.message.includes('fetch')) {
-                        setOtpError(`Connection failed. Is the server running on ${API_URL}?`)
-                      } else {
-                        setOtpError(err.message || 'Failed to send OTP')
-                      }
-                      console.error('OTP request error:', err)
-                    } finally {
-                      setOtpLoading(false)
+                    } else {
+                      setRegEmail('')
+                      setOtpSent(false)
+                      setEmailVerified(false)
                     }
                   }}
-                  disabled={otpLoading || otpSent}
-                >
-                  {otpLoading ? 'Sending...' : otpSent ? '✓ OTP Sent' : 'Verify Email'}
-                </button>
+                  placeholder="Enter 10-digit ID number"
+                  maxLength={10}
+                />
+                <label>ID Number</label>
+                <box-icon name='id-card' type='solid' color="gray"></box-icon>
               </div>
-            )}
 
-            {otpSent && (
-              <>
-                <div className="input-box animation" style={{ ['--li']: 19.7, ['--S']: 2.7 }}>
-                  <input 
-                    type="text" 
-                    value={otp}
-                    onChange={e=>{
-                      setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))
-                      setOtpError('')
-                    }}
-                    placeholder="Enter 6-digit OTP"
-                    maxLength={6}
+              {idNumber.length === 10 && (
+                <div className="input-box animation" style={{ ['--li']: 19.3, ['--S']: 2.3 }}>
+                  <input
+                    type="email"
+                    value={regEmail}
+                    readOnly
+                    disabled
                   />
-                  <label>OTP Code</label>
-                  <box-icon name='key' type='solid' color="gray"></box-icon>
+                  <label>Email (Auto-generated)</label>
+                  <box-icon name='envelope' type='solid' color="gray"></box-icon>
                 </div>
-                <div className="input-box animation" style={{ ['--li']: 19.8, ['--S']: 2.8 }}>
+              )}
+
+              {idNumber.length === 10 && regEmail && (
+                <div className="input-box animation" style={{ ['--li']: 19.5, ['--S']: 2.5 }}>
                   <button
                     type="button"
-                    className="btn-verify-otp"
+                    className="btn-verify-email"
                     onClick={async () => {
-                      if (otp.length !== 6) {
-                        setOtpError('Please enter 6-digit OTP')
+                      if (!regEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(regEmail)) {
+                        setOtpError('Please enter a valid ID number')
                         return
                       }
                       setOtpLoading(true)
                       setOtpError('')
                       try {
-                        const res = await fetchWithTimeout(`${API_URL}/api/auth/verify-otp`, {
+                        const res = await fetchWithTimeout(`${API_URL}/api/auth/request-otp`, {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ email: regEmail, otp })
+                          body: JSON.stringify({ email: regEmail })
                         })
-                        
+
                         if (!res.ok) {
-                          const data = await res.json().catch(() => ({}))
-                          throw new Error(data.error || `Server error: ${res.status}`)
+                          await res.json().catch(() => ({}))
+                          throw new Error(`Server error: ${res.status}`)
                         }
-                        
-                        const data = await res.json()
-                        setEmailVerified(true)
+
+                        await res.json()
+                        setOtpSent(true)
                         setOtpError('')
                       } catch (err) {
                         if (err.name === 'TypeError' && err.message.includes('fetch')) {
                           setOtpError(`Connection failed. Is the server running on ${API_URL}?`)
                         } else {
-                          setOtpError(err.message || 'OTP verification failed')
+                          setOtpError(err.message || 'Failed to send OTP')
                         }
-                        setOtp('')
-                        console.error('OTP verify error:', err)
+                        console.error('OTP request error:', err)
                       } finally {
                         setOtpLoading(false)
                       }
                     }}
-                    disabled={otpLoading || otp.length !== 6}
+                    disabled={otpLoading || otpSent}
                   >
-                    {otpLoading ? 'Verifying...' : emailVerified ? '✓ Verified' : 'Verify OTP'}
+                    {otpLoading ? 'Sending...' : otpSent ? '✓ OTP Sent' : 'Verify Email'}
                   </button>
                 </div>
-              </>
-            )}
+              )}
 
-            {otpError && (
-              <div className="otp-error animation" style={{ ['--li']: 19.9, ['--S']: 2.9 }}>
-                {otpError}
+              {otpSent && (
+                <>
+                  <div className="input-box animation" style={{ ['--li']: 19.7, ['--S']: 2.7 }}>
+                    <input
+                      type="text"
+                      value={otp}
+                      onChange={e => {
+                        setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))
+                        setOtpError('')
+                      }}
+                      placeholder="Enter 6-digit OTP"
+                      maxLength={6}
+                    />
+                    <label>OTP Code</label>
+                    <box-icon name='key' type='solid' color="gray"></box-icon>
+                  </div>
+                  <div className="input-box animation" style={{ ['--li']: 19.8, ['--S']: 2.8 }}>
+                    <button
+                      type="button"
+                      className="btn-verify-otp"
+                      onClick={async () => {
+                        if (otp.length !== 6) {
+                          setOtpError('Please enter 6-digit OTP')
+                          return
+                        }
+                        setOtpLoading(true)
+                        setOtpError('')
+                        try {
+                          const res = await fetchWithTimeout(`${API_URL}/api/auth/verify-otp`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ email: regEmail, otp })
+                          })
+
+                          if (!res.ok) {
+                            await res.json().catch(() => ({}))
+                            throw new Error(`Server error: ${res.status}`)
+                          }
+
+                          await res.json()
+                          setEmailVerified(true)
+                          setOtpError('')
+                        } catch (err) {
+                          if (err.name === 'TypeError' && err.message.includes('fetch')) {
+                            setOtpError(`Connection failed. Is the server running on ${API_URL}?`)
+                          } else {
+                            setOtpError(err.message || 'OTP verification failed')
+                          }
+                          setOtp('')
+                          console.error('OTP verify error:', err)
+                        } finally {
+                          setOtpLoading(false)
+                        }
+                      }}
+                      disabled={otpLoading || otp.length !== 6}
+                    >
+                      {otpLoading ? 'Verifying...' : emailVerified ? '✓ Verified' : 'Verify OTP'}
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {otpError && (
+                <div className="otp-error animation" style={{ ['--li']: 19.9, ['--S']: 2.9 }}>
+                  {otpError}
+                </div>
+              )}
+
+              {emailVerified && (
+                <div className="otp-success animation" style={{ ['--li']: 19.95, ['--S']: 2.95 }}>
+                  Email verified successfully!
+                </div>
+              )}
+
+              <div className="input-box animation" style={{ ['--li']: 20, ['--S']: 3 }}>
+                <input
+                  type={showRegPass ? 'text' : 'password'}
+                  required
+                  value={regPass}
+                  onChange={e => setRegPass(e.target.value)}
+                />
+                <label>Password</label>
+                <box-icon name='lock-alt' type='solid' color="gray"></box-icon>
+                <button
+                  type="button"
+                  className="password-toggle"
+                  onClick={() => setShowRegPass(!showRegPass)}
+                  tabIndex={-1}
+                >
+                  {showRegPass ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
-            )}
 
-            {emailVerified && (
-              <div className="otp-success animation" style={{ ['--li']: 19.95, ['--S']: 2.95 }}>
-                Email verified successfully!
+              <div className="input-box animation" style={{ ['--li']: 20.2, ['--S']: 3.2 }}>
+                <input
+                  type={showConfirmPass ? 'text' : 'password'}
+                  required
+                  value={confirmPass}
+                  onChange={e => setConfirmPass(e.target.value)}
+                />
+                <label>Confirm Password</label>
+                <box-icon name='lock-alt' type='solid' color="gray"></box-icon>
+                <button
+                  type="button"
+                  className="password-toggle"
+                  onClick={() => setShowConfirmPass(!showConfirmPass)}
+                  tabIndex={-1}
+                >
+                  {showConfirmPass ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
-            )}
 
-            <div className="input-box animation" style={{ ['--li']: 20, ['--S']: 3 }}>
-              <input 
-                type={showRegPass ? 'text' : 'password'} 
-                required 
-                value={regPass} 
-                onChange={e=>setRegPass(e.target.value)} 
-              />
-              <label>Password</label>
-              <box-icon name='lock-alt' type='solid' color="gray"></box-icon>
-              <button
-                type="button"
-                className="password-toggle"
-                onClick={() => setShowRegPass(!showRegPass)}
-                tabIndex={-1}
-              >
-                {showRegPass ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
+              {registerError && (
+                <div className="otp-error animation" style={{ ['--li']: 20.5, ['--S']: 3.5 }}>
+                  {registerError}
+                </div>
+              )}
 
-            <div className="input-box animation" style={{ ['--li']: 20.2, ['--S']: 3.2 }}>
-              <input 
-                type={showConfirmPass ? 'text' : 'password'} 
-                required 
-                value={confirmPass} 
-                onChange={e=>setConfirmPass(e.target.value)} 
-              />
-              <label>Confirm Password</label>
-              <box-icon name='lock-alt' type='solid' color="gray"></box-icon>
-              <button
-                type="button"
-                className="password-toggle"
-                onClick={() => setShowConfirmPass(!showConfirmPass)}
-                tabIndex={-1}
-              >
-                {showConfirmPass ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
-
-            {registerError && (
-              <div className="otp-error animation" style={{ ['--li']: 20.5, ['--S']: 3.5 }}>
-                {registerError}
-              </div>
-            )}
-
-            <div className="input-box animation" style={{ ['--li']: 21, ['--S']: 4 }}>
-              <button 
-                className="btn" 
-                type="submit" 
-                disabled={!emailVerified || registerLoading || !studentFullName || !idNumber || !regPass || !confirmPass}
-                onClick={async (e) => {
-                  e.preventDefault()
-                  if (!emailVerified || !studentFullName || !idNumber || !regEmail || !regPass || !confirmPass) {
-                    setRegisterError('Please fill all fields and verify email')
-                    return
-                  }
-                  
-                  if (regPass !== confirmPass) {
-                    setRegisterError('Passwords do not match')
-                    return
-                  }
-                  
-                  if (regPass.length < 6) {
-                    setRegisterError('Password must be at least 6 characters')
-                    return
-                  }
-                  
-                  setRegisterLoading(true)
-                  setRegisterError('')
-                  
-                  try {
-                    const res = await fetchWithTimeout(`${API_URL}/api/auth/register`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ 
-                        studentFullName: studentFullName, 
-                        idNumber: idNumber,
-                        email: regEmail, 
-                        password: regPass 
-                      })
-                    })
-                    
-                    if (!res.ok) {
-                      const data = await res.json().catch(() => ({}))
-                      throw new Error(data.error || 'Registration failed')
+              <div className="input-box animation" style={{ ['--li']: 21, ['--S']: 4 }}>
+                <button
+                  className="btn"
+                  type="submit"
+                  disabled={!emailVerified || registerLoading || !studentFullName || !idNumber || !regPass || !confirmPass}
+                  onClick={async (e) => {
+                    e.preventDefault()
+                    if (!emailVerified || !studentFullName || !idNumber || !regEmail || !regPass || !confirmPass) {
+                      setRegisterError('Please fill all fields and verify email')
+                      return
                     }
-                    
-                    const data = await res.json()
-                    
-                    // Clear any stored tokens (user needs to login)
-                    localStorage.removeItem('authToken')
-                    localStorage.removeItem('user')
-                    
-                    // Show success message
-                    alert('Registration successful! Please login with your credentials.')
-                    
-                    // Switch to login view and clear form
-                    setActive(false)
-                    setStudentFullName('')
-                    setIdNumber('')
-                    setRegEmail('')
-                    setRegPass('')
-                    setConfirmPass('')
-                    setEmailVerified(false)
-                    setOtpSent(false)
-                    setOtp('')
-                    setOtpError('')
+
+                    if (regPass !== confirmPass) {
+                      setRegisterError('Passwords do not match')
+                      return
+                    }
+
+                    if (regPass.length < 6) {
+                      setRegisterError('Password must be at least 6 characters')
+                      return
+                    }
+
+                    setRegisterLoading(true)
                     setRegisterError('')
-                    
-                  } catch (err) {
-                    if (err.name === 'TypeError' && err.message.includes('fetch')) {
-                      setRegisterError(`Connection failed. Is the server running on ${API_URL}?`)
-                    } else {
-                      setRegisterError(err.message || 'Registration failed')
-                    }
-                    console.error('Registration error:', err)
-                  } finally {
-                    setRegisterLoading(false)
-                  }
-                }}
-              >
-                {registerLoading ? 'Registering...' : 'Register'}
-              </button>
-            </div>
 
-            <div className="regi-link animation" style={{ ['--li']: 21, ['--S']: 5 }}>
-              <p>Already have an account? <br/> <a href="#" className="SignInLink" onClick={(e)=>{e.preventDefault(); setActive(false)}}>Sign In</a></p>
-            </div>
-          </form>
+                    try {
+                      const res = await fetchWithTimeout(`${API_URL}/api/auth/register`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          studentFullName: studentFullName,
+                          idNumber: idNumber,
+                          email: regEmail,
+                          password: regPass
+                        })
+                      })
+
+                      if (!res.ok) {
+                        await res.json().catch(() => ({}))
+                        throw new Error('Registration failed')
+                      }
+
+                      await res.json()
+
+                      // Clear any stored tokens (user needs to login)
+                      localStorage.removeItem('authToken')
+                      localStorage.removeItem('user')
+
+                      // Show success message
+                      alert('Registration successful! Please login with your credentials.')
+
+                      // Switch to login view and clear form
+                      setActive(false)
+                      setStudentFullName('')
+                      setIdNumber('')
+                      setRegEmail('')
+                      setRegPass('')
+                      setConfirmPass('')
+                      setEmailVerified(false)
+                      setOtpSent(false)
+                      setOtp('')
+                      setOtpError('')
+                      setRegisterError('')
+
+                    } catch (err) {
+                      if (err.name === 'TypeError' && err.message.includes('fetch')) {
+                        setRegisterError(`Connection failed. Is the server running on ${API_URL}?`)
+                      } else {
+                        setRegisterError(err.message || 'Registration failed')
+                      }
+                      console.error('Registration error:', err)
+                    } finally {
+                      setRegisterLoading(false)
+                    }
+                  }}
+                >
+                  {registerLoading ? 'Registering...' : 'Register'}
+                </button>
+              </div>
+
+              <div className="regi-link animation" style={{ ['--li']: 21, ['--S']: 5 }}>
+                <p>Already have an account? <br /> <a href="#" className="SignInLink" onClick={(e) => { e.preventDefault(); setActive(false) }}>Sign In</a></p>
+              </div>
+            </form>
           </div>
         )}
 
@@ -516,8 +516,8 @@ export default function Login() {
         <div className="forgot-password-modal">
           <div className="forgot-password-content">
             <h2>Reset Password</h2>
-            <button 
-              className="close-modal-btn" 
+            <button
+              className="close-modal-btn"
               onClick={() => {
                 setShowForgotPassword(false)
                 setForgotUsernameOrEmail('')
@@ -538,10 +538,10 @@ export default function Login() {
                 {!forgotOtpSent ? (
                   <>
                     <div className="input-box">
-                      <input 
-                        type="text" 
-                        required 
-                        value={forgotUsernameOrEmail} 
+                      <input
+                        type="text"
+                        required
+                        value={forgotUsernameOrEmail}
                         onChange={e => setForgotUsernameOrEmail(e.target.value)}
                         placeholder="Enter username or email"
                       />
@@ -556,8 +556,8 @@ export default function Login() {
                     )}
 
                     <div className="input-box">
-                      <button 
-                        className="btn" 
+                      <button
+                        className="btn"
                         type="button"
                         disabled={!forgotUsernameOrEmail || forgotPasswordLoading}
                         onClick={async () => {
@@ -565,23 +565,23 @@ export default function Login() {
                             setForgotPasswordError('Please enter your username or email')
                             return
                           }
-                          
+
                           setForgotPasswordLoading(true)
                           setForgotPasswordError('')
-                          
+
                           try {
                             const res = await fetchWithTimeout(`${API_URL}/api/auth/forgot-password`, {
                               method: 'POST',
                               headers: { 'Content-Type': 'application/json' },
                               body: JSON.stringify({ usernameOrEmail: forgotUsernameOrEmail })
                             })
-                            
+
                             if (!res.ok) {
-                              const data = await res.json().catch(() => ({}))
-                              throw new Error(data.error || 'Failed to send OTP')
+                              await res.json().catch(() => ({}))
+                              throw new Error('Failed to send OTP')
                             }
-                            
-                            const data = await res.json()
+
+                            await res.json()
                             setForgotOtpSent(true)
                             setForgotPasswordError('')
                           } catch (err) {
@@ -603,8 +603,8 @@ export default function Login() {
                 ) : (
                   <>
                     <div className="input-box">
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={forgotOtp}
                         onChange={e => {
                           setForgotOtp(e.target.value.replace(/\D/g, '').slice(0, 6))
@@ -624,8 +624,8 @@ export default function Login() {
                     )}
 
                     <div className="input-box">
-                      <button 
-                        className="btn" 
+                      <button
+                        className="btn"
                         type="button"
                         disabled={forgotOtp.length !== 6 || forgotPasswordLoading}
                         onClick={async () => {
@@ -633,25 +633,25 @@ export default function Login() {
                             setForgotPasswordError('Please enter 6-digit OTP')
                             return
                           }
-                          
+
                           setForgotPasswordLoading(true)
                           setForgotPasswordError('')
-                          
+
                           try {
                             const res = await fetchWithTimeout(`${API_URL}/api/auth/verify-reset-otp`, {
                               method: 'POST',
                               headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ 
+                              body: JSON.stringify({
                                 usernameOrEmail: forgotUsernameOrEmail,
-                                otp: forgotOtp 
+                                otp: forgotOtp
                               })
                             })
-                            
+
                             if (!res.ok) {
                               const data = await res.json().catch(() => ({}))
                               throw new Error(data.error || 'OTP verification failed')
                             }
-                            
+
                             const data = await res.json()
                             setResetToken(data.resetToken)
                             setForgotOtpVerified(true)
@@ -682,10 +682,10 @@ export default function Login() {
                 </div>
 
                 <div className="input-box">
-                  <input 
-                    type={showNewPassword ? 'text' : 'password'} 
-                    required 
-                    value={newPassword} 
+                  <input
+                    type={showNewPassword ? 'text' : 'password'}
+                    required
+                    value={newPassword}
                     onChange={e => setNewPassword(e.target.value)}
                     placeholder="Enter new password"
                   />
@@ -702,10 +702,10 @@ export default function Login() {
                 </div>
 
                 <div className="input-box">
-                  <input 
-                    type={showConfirmPassword ? 'text' : 'password'} 
-                    required 
-                    value={confirmPassword} 
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    required
+                    value={confirmPassword}
                     onChange={e => setConfirmPassword(e.target.value)}
                     placeholder="Confirm new password"
                   />
@@ -728,8 +728,8 @@ export default function Login() {
                 )}
 
                 <div className="input-box">
-                  <button 
-                    className="btn" 
+                  <button
+                    className="btn"
                     type="button"
                     disabled={!newPassword || !confirmPassword || newPassword !== confirmPassword || forgotPasswordLoading}
                     onClick={async () => {
@@ -737,37 +737,37 @@ export default function Login() {
                         setForgotPasswordError('Please fill all fields')
                         return
                       }
-                      
+
                       if (newPassword !== confirmPassword) {
                         setForgotPasswordError('Passwords do not match')
                         return
                       }
-                      
+
                       if (newPassword.length < 6) {
                         setForgotPasswordError('Password must be at least 6 characters')
                         return
                       }
-                      
+
                       setForgotPasswordLoading(true)
                       setForgotPasswordError('')
-                      
+
                       try {
                         const res = await fetchWithTimeout(`${API_URL}/api/auth/reset-password`, {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ 
+                          body: JSON.stringify({
                             resetToken,
-                            newPassword 
+                            newPassword
                           })
                         })
-                        
+
                         if (!res.ok) {
-                          const data = await res.json().catch(() => ({}))
-                          throw new Error(data.error || 'Password reset failed')
+                          await res.json().catch(() => ({}))
+                          throw new Error('Password reset failed')
                         }
-                        
-                        const data = await res.json()
-                        
+
+                        await res.json()
+
                         // Success - close modal and show success message
                         alert('Password reset successfully! Please login with your new password.')
                         setShowForgotPassword(false)

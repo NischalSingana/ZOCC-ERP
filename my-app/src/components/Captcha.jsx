@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import './Captcha.css';
 
 export default function Captcha({ onVerify }) {
@@ -7,7 +7,7 @@ export default function Captcha({ onVerify }) {
   const [isVerified, setIsVerified] = useState(false);
   const canvasRef = useRef(null);
 
-  const generateCode = () => {
+  const generateCode = useCallback(() => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let newCode = '';
     for (let i = 0; i < 5; i++) {
@@ -17,11 +17,11 @@ export default function Captcha({ onVerify }) {
     setIsVerified(false);
     setUserInput('');
     onVerify?.(false);
-  };
+  }, [onVerify]);
 
   useEffect(() => {
     generateCode();
-  }, []);
+  }, [generateCode]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -60,12 +60,12 @@ export default function Captcha({ onVerify }) {
       ctx.save();
       ctx.translate(x, y + offsetY);
       ctx.rotate(angle);
-      
+
       const gradient = ctx.createLinearGradient(-15, -15, 15, 15);
       gradient.addColorStop(0, '#4f9cff');
       gradient.addColorStop(1, '#60a5fa');
       ctx.fillStyle = gradient;
-      
+
       ctx.fillText(code[i], 0, 0);
       ctx.restore();
     }
@@ -95,7 +95,7 @@ export default function Captcha({ onVerify }) {
   const handleInputChange = (e) => {
     const value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5);
     setUserInput(value);
-    
+
     if (value.length === 5 && value === code) {
       setIsVerified(true);
       onVerify?.(true);

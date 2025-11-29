@@ -681,10 +681,9 @@ app.get('/api/submissions', authenticateToken, async (req, res) => {
     // Filter out old submissions from old bucket (those with full HTTP URLs or invalid keys)
     const allSubmissions = await Submission.find(query)
       .populate({ path: 'sessionId', select: 'title description date time venue trainer', model: 'Session' })
-      .populate({ path: 'userId', select: 'studentFullName email idNumber', model: 'User' })
+      .populate({ path: 'userId', select: 'studentFullName email idNumber phone role' })
       .sort({ submittedAt: -1 });
 
-    // Filter to only include submissions with valid new bucket keys
     const submissions = allSubmissions.filter(sub => {
       if (!sub.fileUrl) return false;
       // Include if it starts with "submissions/" (new bucket format)
@@ -950,7 +949,7 @@ app.put('/api/submissions/:id', authenticateToken, requireAdmin, async (req, res
     if (!submission) {
       return res.status(404).json({ error: 'Submission not found' });
     }
-    const { status, feedback } = req.body;
+    const { status, feedback, notes } = req.body;
 
     // Normalize status to uppercase
     if (status) {
@@ -963,12 +962,14 @@ app.put('/api/submissions/:id', authenticateToken, requireAdmin, async (req, res
     }
 
     if (feedback !== undefined) submission.feedback = feedback;
+    if (notes !== undefined) submission.notes = notes;
+
     submission.reviewedAt = new Date();
     submission.reviewedBy = req.userId;
     await submission.save();
 
     await submission.populate({ path: 'sessionId', select: 'title description date time venue trainer', model: 'Session' });
-    await submission.populate({ path: 'userId', select: 'studentFullName email idNumber', model: 'User' });
+    await submission.populate({ path: 'userId', select: 'studentFullName email idNumber phone role' });
 
     res.json({ success: true, message: 'Submission updated successfully', submission });
   } catch (error) {
@@ -1121,16 +1122,17 @@ app.get('/api/admin/sessions/:sessionId/attendance', authenticateToken, requireA
 
 app.get('/api/files/:filePath(*)', async (req, res) => {
   try {
-    if (!r2Client || !R2_BUCKET_NAME) {
+    if (!r2Client || !process.env.R2_BUCKET_NAME) {
       return res.status(503).json({ error: 'File service not configured' });
     }
 
     const filePath = decodeURIComponent(req.params.filePath);
+    console.log('Proxy requesting file:', filePath); // Debug log
+
     if (!filePath || !filePath.startsWith('submissions/')) {
       return res.status(403).json({ error: 'Access denied' });
     }
 
-    // Optional: Verify user has access if auth token is provided
     // This allows images to load without auth, but still validates if token is present
     const authHeader = req.headers['authorization'];
     if (authHeader) {
@@ -1318,23 +1320,41 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// Reset student password (admin only)
+// Admin reset password for student
 app.post('/api/admin/students/:id/reset-password', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const student = await User.findById(req.params.id);
-    if (!student) {
-      return res.status(404).json({ error: 'Student not found' });
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
     }
-    const tempPassword = Math.random().toString(36).slice(-8);
-    const hashedPassword = await bcrypt.hash(tempPassword, 10);
-    student.password = hashedPassword;
-    await student.save();
-    res.json({ success: true, message: 'Password reset successfully. Student should use forgot password to set a new one.' });
+
+    // Generate OTP
+    const otp = generateOTP();
+    const expiresAt = new Date(Date.now() + OTP_TTL_MS);
+
+    // Clear existing OTPs and save new one
+    await Otp.deleteMany({ email: user.email.toLowerCase() });
+    await Otp.create({ email: user.email.toLowerCase(), otp, expiresAt, attempts: 0, type: 'password-reset' });
+
+    // Send email
+    const mailOptions = {
+      from: `"ZeroOne Coding Club" <${process.env.SMTP_USER}>`,
+      to: user.email,
+      subject: 'Password Reset Request - ZeroOne Coding Club ERP',
+      text: `An admin has requested a password reset for your account.\n\nYour password reset code is: ${otp}\n\nThis code will expire in 5 minutes.`,
+      html: getPasswordResetEmailTemplate(otp)
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    res.json({ success: true, message: 'Password reset email sent to student' });
   } catch (error) {
-    console.error('Error resetting password:', error);
-    res.status(500).json({ error: 'Failed to reset password' });
+    console.error('Error initiating admin password reset:', error);
+    res.status(500).json({ error: 'Failed to initiate password reset' });
   }
 });
+
+
 
 // Clean up old submissions from old bucket (admin only)
 app.delete('/api/admin/submissions/cleanup-old', authenticateToken, requireAdmin, async (req, res) => {

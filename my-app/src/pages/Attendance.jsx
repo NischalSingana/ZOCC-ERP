@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { CalendarCheck, CheckCircle, XCircle, Clock, TrendingUp } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { API_URL } from '../utils/apiUrl';
@@ -9,11 +9,7 @@ const Attendance = () => {
   const [recentSessions, setRecentSessions] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchAttendance();
-  }, []);
-
-  const fetchAttendance = async () => {
+  const fetchAttendance = useCallback(async () => {
     try {
       const token = localStorage.getItem('authToken');
       const res = await fetch(`${API_URL}/api/attendance`, {
@@ -24,7 +20,7 @@ const Attendance = () => {
       if (res.ok) {
         const data = await res.json();
         setRecentSessions(data.attendance || []);
-        
+
         // Process attendance data for charts
         const processedData = processAttendanceData(data.attendance || []);
         setAttendanceData(processedData);
@@ -34,7 +30,11 @@ const Attendance = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchAttendance();
+  }, [fetchAttendance]);
 
   const processAttendanceData = (sessions) => {
     // Group by month
@@ -51,7 +51,7 @@ const Attendance = () => {
         monthlyData[month].absent++;
       }
     });
-    
+
     return Object.values(monthlyData).sort((a, b) => a.date.localeCompare(b.date));
   };
 
@@ -118,11 +118,10 @@ const Attendance = () => {
                 <button
                   key={period}
                   onClick={() => setSelectedPeriod(period)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                    selectedPeriod === period
-                      ? 'bg-zocc-blue-600 text-white'
-                      : 'bg-zocc-blue-800/30 text-zocc-blue-300 hover:bg-zocc-blue-800/50'
-                  }`}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${selectedPeriod === period
+                    ? 'bg-zocc-blue-600 text-white'
+                    : 'bg-zocc-blue-800/30 text-zocc-blue-300 hover:bg-zocc-blue-800/50'
+                    }`}
                 >
                   {period.toUpperCase()}
                 </button>
@@ -134,9 +133,9 @@ const Attendance = () => {
               <CartesianGrid strokeDasharray="3 3" stroke="#1e3a5f" />
               <XAxis dataKey="date" stroke="#93c5fd" />
               <YAxis stroke="#93c5fd" />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: '#0b2447', 
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#0b2447',
                   border: '1px solid #1e4d8b',
                   borderRadius: '8px',
                   color: '#fff'
@@ -176,10 +175,10 @@ const Attendance = () => {
                   <tr key={session.sessionId || idx} className="border-b border-zocc-blue-700/10 hover:bg-zocc-blue-800/20 transition-colors">
                     <td className="py-3 px-4 text-white font-medium">{session.title}</td>
                     <td className="py-3 px-4 text-zocc-blue-300">
-                      {session.date ? new Date(session.date).toLocaleDateString('en-US', { 
-                        year: 'numeric', 
-                        month: 'short', 
-                        day: 'numeric' 
+                      {session.date ? new Date(session.date).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
                       }) : 'N/A'}
                     </td>
                     <td className="py-3 px-4 text-zocc-blue-300">{session.trainer || 'N/A'}</td>
@@ -187,15 +186,14 @@ const Attendance = () => {
                       {(() => {
                         const status = session.status?.toLowerCase() || 'absent';
                         return (
-                          <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${
-                            status === 'present'
-                              ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                              : status === 'late'
+                          <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${status === 'present'
+                            ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                            : status === 'late'
                               ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
                               : status === 'excused'
-                              ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                              : 'bg-red-500/20 text-red-400 border border-red-500/30'
-                          }`}>
+                                ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                                : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                            }`}>
                             {status === 'present' ? (
                               <CheckCircle size={14} />
                             ) : (

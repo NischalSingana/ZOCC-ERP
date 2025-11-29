@@ -73,7 +73,7 @@ const Profile = () => {
         <div className="bg-zocc-blue-800/30 backdrop-blur-lg rounded-lg p-6 border border-zocc-blue-700/30">
           <ProfileForm
             user={user}
-            onUpdate={(updatedUser) => {
+            onUpdate={() => {
               setIsEditing(false);
             }}
           />

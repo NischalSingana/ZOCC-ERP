@@ -22,6 +22,8 @@ const StudentDetails = () => {
   useEffect(() => {
     if (studentId) {
       fetchStudentDetails(studentId);
+    } else {
+      setLoading(false);
     }
   }, [studentId]);
 
@@ -57,7 +59,7 @@ const StudentDetails = () => {
         email: studentData.email,
         phone: studentData.phone,
       });
-      
+
       if (response.data?.success || response.data?.user) {
         toast.success('Student details updated successfully');
         setStudentData(response.data.user || studentData);

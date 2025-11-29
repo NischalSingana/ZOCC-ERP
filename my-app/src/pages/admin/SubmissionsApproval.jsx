@@ -82,19 +82,66 @@ const SubmissionsApproval = () => {
     }
   };
 
-  const handleDownload = (submission) => {
+  const handleDownload = async (submission) => {
     if (!submission.fileUrl) {
       toast.error('File URL is not available');
       return;
     }
-    // Signed URLs from backend are already full URLs, use them directly
-    // If fileUrl is a key path (starts with submissions/), use proxy endpoint
-    let fileUrl = submission.fileUrl;
-    if (fileUrl.startsWith('submissions/') && !fileUrl.startsWith('http')) {
-      fileUrl = `${API_URL}/api/files/${encodeURIComponent(fileUrl)}`;
+
+    try {
+      // Get the file URL (signed URL or proxy endpoint)
+      let fileUrl = submission.fileUrl;
+
+      // If it's a full URL, try to extract the key to use the proxy endpoint
+      // This avoids CORS issues with direct R2/S3 downloads in the browser
+      if (fileUrl.startsWith('http')) {
+        const match = fileUrl.match(/(submissions\/.*)/);
+        if (match) {
+          // Found the key, use proxy
+          const key = match[1].split('?')[0]; // Remove query params if any
+          fileUrl = `${API_URL}/api/files/${encodeURIComponent(key)}`;
+        }
+      } else if (fileUrl.startsWith('submissions/')) {
+        // It's already a key, use proxy
+        fileUrl = `${API_URL}/api/files/${encodeURIComponent(fileUrl)}`;
+      }
+
+      // Fetch the file as a blob with auth headers
+      const token = localStorage.getItem('authToken');
+      const headers = {};
+
+      // Only add auth header if it's an internal API call
+      if (token && fileUrl.includes(API_URL)) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(fileUrl, { headers });
+      if (!response.ok) throw new Error('Download failed');
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+
+      // Create a temporary link to trigger download
+      const link = document.createElement('a');
+      link.href = url;
+      // Use the original filename or a default one
+      link.download = submission.fileName || `submission-${submission.id || submission._id}`;
+      document.body.appendChild(link);
+      link.click();
+
+      // Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      toast.error('Failed to download file');
+      // Fallback to opening in new tab if blob fetch fails
+      let fileUrl = submission.fileUrl;
+      if (fileUrl.startsWith('submissions/') && !fileUrl.startsWith('http')) {
+        fileUrl = `${API_URL}/api/files/${encodeURIComponent(fileUrl)}`;
+      }
+      window.open(fileUrl, '_blank');
     }
-    // Open in new tab for download
-    window.open(fileUrl, '_blank');
   };
 
   const handleViewImage = (submission) => {
@@ -103,21 +150,21 @@ const SubmissionsApproval = () => {
       return;
     }
     // Check if it's an image file
-    const isImage = submission.fileType === 'image' || 
-                   (submission.fileName && /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(submission.fileName));
-    
+    const isImage = submission.fileType === 'image' ||
+      (submission.fileName && /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(submission.fileName));
+
     if (!isImage) {
       // If not an image, just download it
       handleDownload(submission);
       return;
     }
-    
+
     // Get the file URL (signed URL or proxy endpoint)
     let fileUrl = submission.fileUrl;
     if (fileUrl.startsWith('submissions/') && !fileUrl.startsWith('http')) {
       fileUrl = `${API_URL}/api/files/${encodeURIComponent(fileUrl)}`;
     }
-    
+
     setSelectedImageUrl(fileUrl);
     setImageModalOpen(true);
   };
@@ -163,8 +210,8 @@ const SubmissionsApproval = () => {
       key: 'file',
       header: 'File',
       render: (submission) => {
-        const isImage = submission.fileType === 'image' || 
-                       (submission.fileName && /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(submission.fileName));
+        const isImage = submission.fileType === 'image' ||
+          (submission.fileName && /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(submission.fileName));
         return (
           <div className="flex items-center gap-2">
             {isImage ? (
@@ -206,8 +253,8 @@ const SubmissionsApproval = () => {
       key: 'actions',
       header: 'Actions',
       render: (submission) => {
-        const isImage = submission.fileType === 'image' || 
-                       (submission.fileName && /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(submission.fileName));
+        const isImage = submission.fileType === 'image' ||
+          (submission.fileName && /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(submission.fileName));
         return (
           <div className="flex gap-2">
             {isImage && (
@@ -297,7 +344,7 @@ const SubmissionsApproval = () => {
 
       {/* Image View Modal */}
       {imageModalOpen && selectedImageUrl && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 p-4"
           onClick={() => {
             setImageModalOpen(false);
@@ -315,9 +362,9 @@ const SubmissionsApproval = () => {
             >
               <XCircle size={24} />
             </button>
-            <img 
-              src={selectedImageUrl} 
-              alt="Submission preview" 
+            <img
+              src={selectedImageUrl}
+              alt="Submission preview"
               className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
               onClick={(e) => e.stopPropagation()}
               onError={(e) => {

@@ -95,21 +95,57 @@ export default function Login() {
           <h2 className="animation" style={{ ['--D']: 0, ['--S']: 21 }}>
             {isAdminMode ? 'Admin Login' : 'Login'}
           </h2>
-          <form onSubmit={(e) => e.preventDefault()}>
+          <form 
+            onSubmit={async (e) => {
+              e.preventDefault()
+              if ((!isAdminMode && !captchaVerified) || !loginEmail || !loginPass) return
+
+              setLoginLoading(true)
+              setLoginError('')
+
+              try {
+                const result = await login(loginEmail.toLowerCase().trim(), loginPass)
+                if (result.success) {
+                  // Browser will prompt to save credentials after successful login
+                  navigate('/dashboard')
+                } else {
+                  setLoginError(result.error || 'Login failed. Please check your credentials.')
+                }
+              } catch (err) {
+                console.error('Login error:', err)
+                setLoginError(err.message || 'Login failed. Please check your credentials.')
+              } finally {
+                setLoginLoading(false)
+              }
+            }}
+            autoComplete="on"
+            method="post"
+          >
             <div className="input-box animation" style={{ ['--D']: 1, ['--S']: 22 }}>
-              <input type="email" required value={loginEmail} onChange={e => setLoginEmail(e.target.value)} />
-              <label>Email</label>
+              <input 
+                type="email" 
+                name="email"
+                id="login-email"
+                autoComplete="username"
+                required 
+                value={loginEmail} 
+                onChange={e => setLoginEmail(e.target.value)} 
+              />
+              <label htmlFor="login-email">Email</label>
               <box-icon name='envelope' type='solid' color="gray"></box-icon>
             </div>
 
             <div className="input-box animation" style={{ ['--D']: 2, ['--S']: 23 }}>
               <input
                 type={showLoginPass ? 'text' : 'password'}
+                name="password"
+                id="login-password"
+                autoComplete="current-password"
                 required
                 value={loginPass}
                 onChange={e => setLoginPass(e.target.value)}
               />
-              <label>Password</label>
+              <label htmlFor="login-password">Password</label>
               <box-icon name='lock-alt' type='solid' color="gray"></box-icon>
               <button
                 type="button"
@@ -143,28 +179,7 @@ export default function Login() {
               <button
                 className="btn"
                 type="submit"
-                disabled={(!isAdminMode && !captchaVerified) || loginLoading}
-                onClick={async (e) => {
-                  e.preventDefault()
-                  if ((!isAdminMode && !captchaVerified) || !loginEmail || !loginPass) return
-
-                  setLoginLoading(true)
-                  setLoginError('')
-
-                  try {
-                    const result = await login(loginEmail.toLowerCase().trim(), loginPass)
-                    if (result.success) {
-                      navigate('/dashboard')
-                    } else {
-                      setLoginError(result.error || 'Login failed. Please check your credentials.')
-                    }
-                  } catch (err) {
-                    console.error('Login error:', err)
-                    setLoginError(err.message || 'Login failed. Please check your credentials.')
-                  } finally {
-                    setLoginLoading(false)
-                  }
-                }}
+                disabled={(!isAdminMode && !captchaVerified) || loginLoading || !loginEmail || !loginPass}
               >
                 {loginLoading ? 'Logging in...' : 'Login'}
               </button>

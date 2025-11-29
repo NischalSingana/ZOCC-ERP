@@ -39,12 +39,19 @@ const ProjectAdmin = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const url = editingProject ? `/api/projects/${editingProject.id}` : '/api/projects';
+      const projectId = editingProject?.id || editingProject?._id;
+      const url = editingProject ? `/api/projects/${projectId}` : '/api/projects';
       const method = editingProject ? 'put' : 'post';
+
+      // Convert referenceFiles to array of strings (URLs or file names)
+      // For now, we'll send empty array if files aren't uploaded yet
+      const filesToSend = Array.isArray(referenceFiles) 
+        ? referenceFiles.map(file => typeof file === 'string' ? file : file.name || file.url || '')
+        : [];
 
       const response = await axiosInstance[method](url, {
         ...formData,
-        referenceFiles,
+        referenceFiles: filesToSend,
       });
 
       if (response.data?.success) {
@@ -57,20 +64,26 @@ const ProjectAdmin = () => {
       }
     } catch (error) {
       console.error('Error saving project:', error);
-      toast.error('Failed to save project');
+      toast.error(error.response?.data?.error || 'Failed to save project');
     }
   };
 
   const handleDelete = async (projectId) => {
+    if (!projectId) {
+      toast.error('Invalid project ID');
+      return;
+    }
+    
     if (!confirm('Are you sure you want to delete this project?')) return;
 
     try {
-      await axiosInstance.delete(`/api/projects/${projectId}`);
+      const idString = projectId?.toString() || projectId;
+      await axiosInstance.delete(`/api/projects/${idString}`);
       toast.success('Project deleted!');
       fetchProjects();
     } catch (error) {
       console.error('Error deleting project:', error);
-      toast.error('Failed to delete project');
+      toast.error(error.response?.data?.error || 'Failed to delete project');
     }
   };
 
@@ -94,6 +107,15 @@ const ProjectAdmin = () => {
   const columns = [
     { key: 'title', header: 'Title' },
     {
+      key: 'description',
+      header: 'Description',
+      render: (project) => (
+        <span className="text-zocc-blue-300 text-sm line-clamp-2 max-w-md">
+          {project.description || 'No description'}
+        </span>
+      ),
+    },
+    {
       key: 'isActive',
       header: 'Status',
       render: (project) => (
@@ -109,14 +131,21 @@ const ProjectAdmin = () => {
       ),
     },
     {
-      key: 'submissions',
-      header: 'Submissions',
-      render: (project) => project._count?.submissions || 0,
+      key: 'referenceFiles',
+      header: 'Reference Files',
+      render: (project) => (
+        <span className="text-zocc-blue-300 text-sm">
+          {project.referenceFiles?.length || 0} file(s)
+        </span>
+      ),
     },
     {
       key: 'createdAt',
       header: 'Created',
-      render: (project) => new Date(project.createdAt).toLocaleDateString(),
+      render: (project) => 
+        project.createdAt 
+          ? new Date(project.createdAt).toLocaleDateString()
+          : 'N/A',
     },
     {
       key: 'actions',
@@ -130,7 +159,7 @@ const ProjectAdmin = () => {
             <Edit size={18} className="text-zocc-blue-400" />
           </button>
           <button
-            onClick={() => handleDelete(project.id)}
+            onClick={() => handleDelete(project.id || project._id)}
             className="p-2 hover:bg-red-900/20 rounded-lg transition-colors"
           >
             <Trash2 size={18} className="text-red-400" />
@@ -242,7 +271,7 @@ const ProjectAdmin = () => {
         <Table
           data={projects}
           columns={columns}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.id || item._id}
           emptyMessage="No projects found"
         />
       </div>

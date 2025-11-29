@@ -15,6 +15,7 @@ import Session from './models/Session.js';
 import Submission from './models/Submission.js';
 import Attendance from './models/Attendance.js';
 import Announcement from './models/Announcement.js';
+import Project from './models/Project.js';
 import Query from './models/Query.js';
 
 dotenv.config();
@@ -62,7 +63,7 @@ app.use(cors({
 
 // Helper functions
 function generateOTP() {
-  return Array.from({ length: OTP_LENGTH }, () =>
+  return Array.from({ length: OTP_LENGTH }, () => 
     Math.floor(Math.random() * 10)
   ).join('');
 }
@@ -193,7 +194,7 @@ const authenticateToken = (req, res, next) => {
 const requireAdmin = async (req, res, next) => {
   try {
     const user = await User.findById(req.userId);
-    if (!user || user.role !== 'ADMIN') {
+    if (!user || user.role?.toUpperCase() !== 'ADMIN') {
       return res.status(403).json({ error: 'Admin access required' });
     }
     next();
@@ -360,7 +361,7 @@ app.post('/api/auth/register', async (req, res) => {
     verifiedUser.idNumber = idNumber;
     verifiedUser.password = hashedPassword;
     await verifiedUser.save();
-
+    
     const token = jwt.sign({ userId: verifiedUser._id, email: verifiedUser.email }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
     verifiedUser.lastLogin = new Date();
     await verifiedUser.save();
@@ -596,7 +597,8 @@ app.post('/api/auth/reset-password', async (req, res) => {
 // Get all sessions
 app.get('/api/sessions', authenticateToken, async (req, res) => {
   try {
-    const sessions = await Session.find().sort({ date: 1, time: 1 });
+    // Sort by createdAt descending to show newest sessions first
+    const sessions = await Session.find().sort({ createdAt: -1, date: -1, startTime: -1 }).lean();
     res.json({ success: true, sessions });
   } catch (error) {
     console.error('Error fetching sessions:', error);
@@ -732,7 +734,7 @@ app.get('/api/submissions', authenticateToken, async (req, res) => {
             // Fallback to proxy endpoint if signed URL generation fails
             subObj.fileUrl = `${req.protocol}://${req.get('host')}/api/files/${encodeURIComponent(key)}`;
           }
-        } else {
+} else {
           // If R2 is not configured or key is invalid, use proxy endpoint
           if (key && key.startsWith('submissions/')) {
             subObj.fileUrl = `${req.protocol}://${req.get('host')}/api/files/${encodeURIComponent(key)}`;
@@ -867,10 +869,10 @@ app.post('/api/submissions', authenticateToken, upload.single('image'), handleMu
     try {
       await withTimeout(
         r2Client.send(new PutObjectCommand({
-          Bucket: R2_BUCKET_NAME,
-          Key: uniqueFileName,
-          Body: req.file.buffer,
-          ContentType: req.file.mimetype,
+      Bucket: R2_BUCKET_NAME,
+      Key: uniqueFileName,
+      Body: req.file.buffer,
+      ContentType: req.file.mimetype,
         })),
         30000, // 30 second timeout
         'R2 upload timeout'
@@ -904,13 +906,13 @@ app.post('/api/submissions', authenticateToken, upload.single('image'), handleMu
     const fileUrl = uniqueFileName; // Store key for private bucket
 
     try {
-      const submission = await Submission.create({
-        userId: req.userId,
-        sessionId,
-        fileUrl,
+    const submission = await Submission.create({
+      userId: req.userId,
+      sessionId,
+      fileUrl,
         fileName: req.file.originalname,
-        fileType,
-        notes: notes || '',
+      fileType,
+      notes: notes || '',
         status: 'PENDING'
       });
 
@@ -918,11 +920,11 @@ app.post('/api/submissions', authenticateToken, upload.single('image'), handleMu
 
       console.log(`✅ Submission created in database: ${submission._id}`);
 
-      res.status(201).json({
-        success: true,
-        message: 'Submission uploaded successfully',
-        submission
-      });
+    res.status(201).json({
+      success: true,
+      message: 'Submission uploaded successfully',
+      submission
+    });
     } catch (dbError) {
       console.error('❌ Database error creating submission:', dbError);
       // File is already uploaded to R2, but we failed to save to DB
@@ -987,7 +989,7 @@ app.get('/api/attendance', authenticateToken, async (req, res) => {
     const userAttendance = await Attendance.find({ userId: req.userId })
       .populate({ path: 'sessionId', select: 'title description date time venue trainer', model: 'Session' })
       .sort({ markedAt: -1 });
-
+    
     const attendanceMap = new Map();
     userAttendance.forEach(att => {
       if (att.sessionId) {
@@ -998,7 +1000,7 @@ app.get('/api/attendance', authenticateToken, async (req, res) => {
         });
       }
     });
-
+    
     const attendanceData = sessions.map(session => {
       const attendanceRecord = attendanceMap.get(session._id.toString());
       return {
@@ -1035,7 +1037,7 @@ app.post('/api/attendance', authenticateToken, async (req, res) => {
     }
 
     const user = await User.findById(req.userId);
-    const isAdmin = user && user.role === 'ADMIN';
+    const isAdmin = user && user.role?.toUpperCase() === 'ADMIN';
 
     // If admin provided userId, use it; otherwise use the authenticated user's ID
     const targetUserId = (isAdmin && userId) ? userId : req.userId;
@@ -1053,9 +1055,13 @@ app.post('/api/attendance', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Session not found' });
     }
 
+    // Ensure userId and sessionId are ObjectIds
+    const targetUserIdObj = typeof targetUserId === 'string' ? new mongoose.Types.ObjectId(targetUserId) : targetUserId;
+    const sessionIdObj = typeof sessionId === 'string' ? new mongoose.Types.ObjectId(sessionId) : sessionId;
+    
     const attendance = await Attendance.findOneAndUpdate(
-      { userId: targetUserId, sessionId },
-      { userId: targetUserId, sessionId, status: status.toLowerCase(), markedAt: new Date() },
+      { userId: targetUserIdObj, sessionId: sessionIdObj },
+      { userId: targetUserIdObj, sessionId: sessionIdObj, status: status.toLowerCase(), markedAt: new Date() },
       { upsert: true, new: true }
     );
 
@@ -1105,7 +1111,7 @@ app.get('/api/admin/sessions/:sessionId/attendance', authenticateToken, requireA
         studentFullName: student.studentFullName,
         idNumber: student.idNumber,
         email: student.email,
-        status: attendanceRecord?.status || 'absent',
+        status: attendanceRecord?.status || null,
         markedAt: attendanceRecord?.markedAt,
         notes: attendanceRecord?.notes
       };
@@ -1140,13 +1146,13 @@ app.get('/api/files/:filePath(*)', async (req, res) => {
         const token = authHeader.split(' ')[1];
         const decoded = jwt.verify(token, JWT_SECRET);
         const user = await User.findById(decoded.userId);
-        const isAdmin = user && user.role === 'ADMIN';
+        const isAdmin = user && user.role?.toUpperCase() === 'ADMIN';
 
         if (!isAdmin) {
           // Extract userId from file path: submissions/{userId}/...
           const pathMatch = filePath.match(/^submissions\/([^/]+)\//);
           if (pathMatch && pathMatch[1] !== decoded.userId.toString()) {
-            return res.status(403).json({ error: 'Access denied' });
+      return res.status(403).json({ error: 'Access denied' });
           }
         }
       } catch (authError) {
@@ -1164,7 +1170,7 @@ app.get('/api/files/:filePath(*)', async (req, res) => {
     res.setHeader('Cache-Control', 'private, max-age=3600'); // 1 hour for private files
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Content-Disposition', `inline; filename="${filePath.split('/').pop()}"`);
-
+    
     if (response.Body) {
       // Convert stream to buffer for proper handling
       const chunks = [];
@@ -1209,8 +1215,8 @@ app.get('/api/users/me', authenticateToken, async (req, res) => {
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-    res.json({
-      success: true,
+    res.json({ 
+      success: true, 
       user: {
         id: user._id,
         studentFullName: user.studentFullName,
@@ -1247,7 +1253,7 @@ app.put('/api/users/me', authenticateToken, async (req, res) => {
     if (phone !== undefined) user.phone = phone;
 
     await user.save();
-
+    
     res.json({
       success: true,
       message: 'Profile updated successfully',
@@ -1404,7 +1410,7 @@ app.delete('/api/admin/submissions/cleanup-old', authenticateToken, requireAdmin
     const deletedCount = await Submission.deleteMany({ _id: { $in: oldSubmissionIds } });
 
     console.log(`🗑️  Deleted ${deletedCount.deletedCount} old submissions from DB and ${deletedFilesCount} files from R2`);
-
+    
     res.json({
       success: true,
       message: `Successfully deleted ${deletedCount.deletedCount} old submissions and ${deletedFilesCount} files`,
@@ -1420,11 +1426,22 @@ app.delete('/api/admin/submissions/cleanup-old', authenticateToken, requireAdmin
 // ========== ANNOUNCEMENT ROUTES ==========
 
 // Get all announcements (public/students see published only, admin sees all)
-app.get('/api/announcements', async (req, res) => {
+app.get('/api/announcements', authenticateToken, async (req, res) => {
   try {
-    // Check if user is admin (optional, if you want to filter based on role)
-    // For now, we'll return all and let frontend filter, or filter here
-    const announcements = await Announcement.find().sort({ createdAt: -1 });
+    const user = await User.findById(req.userId);
+    const isAdmin = user && user.role?.toUpperCase() === 'ADMIN';
+
+    let query = {};
+    // If not admin, only return published announcements
+    if (!isAdmin) {
+      query.published = true;
+    }
+
+    const announcements = await Announcement.find(query)
+      .populate({ path: 'createdBy', select: 'studentFullName email name', model: 'User' })
+      .sort({ createdAt: -1 })
+      .lean();
+    
     res.json({ success: true, announcements });
   } catch (error) {
     console.error('Error fetching announcements:', error);
@@ -1494,6 +1511,113 @@ app.delete('/api/announcements/:id', authenticateToken, requireAdmin, async (req
   } catch (error) {
     console.error('Error deleting announcement:', error);
     res.status(500).json({ error: 'Failed to delete announcement' });
+  }
+});
+
+// ========== PROJECT ROUTES ==========
+
+// Get all projects (students see active only, admin sees all)
+app.get('/api/projects', authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId);
+    const isAdmin = user && user.role?.toUpperCase() === 'ADMIN';
+
+    let query = {};
+    // If not admin, only return active projects
+    if (!isAdmin) {
+      query.isActive = true;
+    }
+
+    const projects = await Project.find(query)
+      .populate({ path: 'createdBy', select: 'studentFullName email name', model: 'User' })
+      .sort({ createdAt: -1 })
+      .lean();
+    
+    res.json({ success: true, projects });
+  } catch (error) {
+    console.error('Error fetching projects:', error);
+    console.error('Error details:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to fetch projects',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// Create project (admin only)
+app.post('/api/projects', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { title, description, isActive, referenceFiles } = req.body;
+    if (!title || !description) {
+      return res.status(400).json({ error: 'Title and description are required' });
+    }
+
+    // Ensure referenceFiles is an array of strings
+    let filesArray = [];
+    if (Array.isArray(referenceFiles)) {
+      filesArray = referenceFiles
+        .map(file => {
+          if (typeof file === 'string') return file.trim();
+          if (file && typeof file === 'object' && file.name) return file.name;
+          return null;
+        })
+        .filter(file => file && file.length > 0);
+    }
+
+    const project = await Project.create({
+      title: title.trim(),
+      description: description.trim(),
+      isActive: isActive !== undefined ? isActive : true,
+      referenceFiles: filesArray,
+      createdBy: req.userId
+    });
+
+    res.status(201).json({ success: true, message: 'Project created successfully', project });
+  } catch (error) {
+    console.error('Error creating project:', error);
+    console.error('Error details:', error.message);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ 
+      error: 'Failed to create project',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// Update project (admin only)
+app.put('/api/projects/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { title, description, isActive, referenceFiles } = req.body;
+    const project = await Project.findById(req.params.id);
+
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    if (title) project.title = title;
+    if (description) project.description = description;
+    if (isActive !== undefined) project.isActive = isActive;
+    if (referenceFiles !== undefined) project.referenceFiles = referenceFiles;
+
+    await project.save();
+    res.json({ success: true, message: 'Project updated successfully', project });
+  } catch (error) {
+    console.error('Error updating project:', error);
+    res.status(500).json({ error: 'Failed to update project' });
+  }
+});
+
+// Delete project (admin only)
+app.delete('/api/projects/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const project = await Project.findByIdAndDelete(req.params.id);
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+    res.json({ success: true, message: 'Project deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting project:', error);
+    res.status(500).json({ error: 'Failed to delete project' });
   }
 });
 

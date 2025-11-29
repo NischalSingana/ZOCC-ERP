@@ -26,6 +26,7 @@ import SessionManagement from './pages/admin/SessionManagement.jsx';
 import SubmissionsApproval from './pages/admin/SubmissionsApproval.jsx';
 import AnnouncementsAdmin from './pages/admin/Announcements.jsx';
 import ProjectAdmin from './pages/admin/ProjectAdmin.jsx';
+import AdminQueries from './pages/admin/Queries.jsx';
 
 function App() {
   return (
@@ -38,9 +39,9 @@ function App() {
             <div style={{ position: 'relative', height: '100vh', width: '100%', background: 'transparent' }}>
               <header className="app-header">
                 <img src={navLogo} alt="Title" className="app-logo" />
-                <a 
-                  href="https://sac.kluniversity.in/" 
-                  target="_blank" 
+                <a
+                  href="https://sac.kluniversity.in/"
+                  target="_blank"
                   rel="noopener noreferrer"
                   style={{ display: 'inline-block' }}
                 >
@@ -214,6 +215,16 @@ function App() {
             <ProtectedRoute requiredRole="ADMIN">
               <DashboardLayout>
                 <ProjectAdmin />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/admin/queries"
+          element={
+            <ProtectedRoute requiredRole="ADMIN">
+              <DashboardLayout>
+                <AdminQueries />
               </DashboardLayout>
             </ProtectedRoute>
           }

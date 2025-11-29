@@ -34,8 +34,9 @@ const submissionSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'reviewed', 'accepted', 'rejected'],
-    default: 'pending'
+    enum: ['PENDING', 'ACCEPTED', 'REJECTED'],
+    default: 'PENDING',
+    set: (value) => value ? value.toUpperCase() : 'PENDING'
   },
   feedback: {
     type: String,

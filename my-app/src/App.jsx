@@ -24,6 +24,7 @@ import RegisteredStudents from './pages/admin/RegisteredStudents.jsx';
 import AttendanceAdmin from './pages/admin/Attendance.jsx';
 import SessionManagement from './pages/admin/SessionManagement.jsx';
 import SubmissionsApproval from './pages/admin/SubmissionsApproval.jsx';
+import ProjectSubmissionsApproval from './pages/admin/ProjectSubmissionsApproval.jsx';
 import AnnouncementsAdmin from './pages/admin/Announcements.jsx';
 import ProjectAdmin from './pages/admin/ProjectAdmin.jsx';
 import AdminQueries from './pages/admin/Queries.jsx';
@@ -195,6 +196,16 @@ function App() {
             <ProtectedRoute requiredRole="ADMIN">
               <DashboardLayout>
                 <SubmissionsApproval />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/admin/project-submissions"
+          element={
+            <ProtectedRoute requiredRole="ADMIN">
+              <DashboardLayout>
+                <ProjectSubmissionsApproval />
               </DashboardLayout>
             </ProtectedRoute>
           }

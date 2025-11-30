@@ -39,6 +39,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
     { icon: CalendarCheck, label: 'Attendance Marking', path: '/dashboard/admin/attendance' },
     { icon: BookOpen, label: 'Session Management', path: '/dashboard/admin/sessions' },
     { icon: FileText, label: 'Submissions Approval', path: '/dashboard/admin/submissions' },
+    { icon: FolderKanban, label: 'Project Submissions', path: '/dashboard/admin/project-submissions' },
     { icon: Megaphone, label: 'Announcements', path: '/dashboard/admin/announcements' },
     { icon: MessageSquare, label: 'Queries', path: '/dashboard/admin/queries' },
     { icon: FolderKanban, label: 'Project Management', path: '/dashboard/admin/projects' },

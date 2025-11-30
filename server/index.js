@@ -1952,23 +1952,20 @@ app.get('/api/project-submissions', authenticateToken, async (req, res) => {
       .sort({ submittedAt: -1 })
       .lean();
 
-    // Generate signed URLs for file access
-    const submissionsWithUrls = await Promise.all(submissions.map(async (sub) => {
+    // Don't generate signed URLs - use proxy endpoint instead to avoid CORS issues
+    // Keep the original R2 key path so frontend can use /api/files/ endpoint
+    const submissionsWithUrls = submissions.map((sub) => {
       const subObj = { ...sub };
-      if (subObj.fileUrl && subObj.fileUrl.startsWith('project-submissions/') && r2Client && R2_BUCKET_NAME) {
-        try {
-          const command = new GetObjectCommand({
-            Bucket: R2_BUCKET_NAME,
-            Key: subObj.fileUrl
-          });
-          subObj.fileUrl = await getSignedUrl(r2Client, command, { expiresIn: 3600 });
-        } catch (error) {
-          console.error(`Error generating signed URL for ${subObj.fileUrl}:`, error.message);
-          subObj.fileUrl = `${req.protocol}://${req.get('host')}/api/files/${encodeURIComponent(subObj.fileUrl)}`;
-        }
+      // Ensure fileUrl is the R2 key path (project-submissions/...)
+      // If it's already a signed URL, we need to extract the key, but for now
+      // we'll keep it as-is and let the frontend handle it via proxy
+      if (subObj.fileUrl && !subObj.fileUrl.startsWith('project-submissions/') && !subObj.fileUrl.startsWith('http')) {
+        // If it's not a path and not a URL, it might be invalid
+        console.warn(`Invalid fileUrl format for submission ${subObj._id}: ${subObj.fileUrl}`);
       }
+      // Keep the original fileUrl (R2 key) - frontend will use proxy endpoint
       return subObj;
-    }));
+    });
 
     res.json({ success: true, submissions: submissionsWithUrls });
   } catch (error) {

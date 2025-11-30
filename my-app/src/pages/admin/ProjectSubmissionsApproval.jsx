@@ -87,18 +87,55 @@ const ProjectSubmissionsApproval = () => {
   const handleDownload = async (submission) => {
     try {
       const token = localStorage.getItem('authToken');
-      const fileUrl = submission.fileUrl;
+      let fileUrl = submission.fileUrl;
       
       if (!fileUrl) {
         toast.error('File URL not available');
         return;
       }
 
-      // Construct download URL
-      let downloadUrl = fileUrl;
-      if (!fileUrl.startsWith('http')) {
-        downloadUrl = `${API_URL}/api/files/${encodeURIComponent(fileUrl)}`;
+      if (!token) {
+        toast.error('Please log in to download files');
+        return;
       }
+
+      // If fileUrl is a signed URL (starts with http/https), extract the R2 key
+      // Otherwise, use it as-is (it should be an R2 key like project-submissions/...)
+      let r2Key = fileUrl;
+      if (fileUrl.startsWith('http://') || fileUrl.startsWith('https://')) {
+        // Try to extract the R2 key from signed URL
+        try {
+          const urlObj = new URL(fileUrl);
+          // Signed URLs from R2 typically have the key in the pathname
+          const pathMatch = urlObj.pathname.match(/project-submissions\/.+/) || 
+                           urlObj.pathname.match(/\/project-submissions\/.+/);
+          if (pathMatch) {
+            r2Key = pathMatch[0].startsWith('/') ? pathMatch[0].substring(1) : pathMatch[0];
+          } else {
+            // If we can't extract, try to get from query params or use the original
+            // For now, we'll need to store the original key separately or reconstruct it
+            console.warn('Could not extract R2 key from signed URL:', fileUrl);
+            // Fallback: try to use the submission's stored fileUrl if available
+            // But since we're getting signed URLs, we need to handle this differently
+            toast.error('Unable to extract file path from URL. Please contact admin.');
+            return;
+          }
+        } catch (e) {
+          console.error('Error parsing signed URL:', e);
+          toast.error('Invalid file URL format');
+          return;
+        }
+      }
+
+      // Always use the proxy endpoint to avoid CORS issues
+      // Ensure r2Key is an R2 key path (project-submissions/...)
+      if (!r2Key.startsWith('project-submissions/')) {
+        console.error('Invalid R2 key format:', r2Key);
+        toast.error('Invalid file path format');
+        return;
+      }
+
+      const downloadUrl = `${API_URL}/api/files/${encodeURIComponent(r2Key)}`;
 
       const response = await fetch(downloadUrl, {
         headers: {
@@ -107,7 +144,20 @@ const ProjectSubmissionsApproval = () => {
       });
 
       if (!response.ok) {
-        throw new Error(`Download failed: ${response.status}`);
+        if (response.status === 401) {
+          toast.error('Authentication failed. Please log in again.');
+          return;
+        }
+        if (response.status === 403) {
+          toast.error('Access denied. You do not have permission to access this file.');
+          return;
+        }
+        if (response.status === 404) {
+          toast.error('File not found. It may have been deleted.');
+          return;
+        }
+        const errorText = await response.text().catch(() => 'Unknown error');
+        throw new Error(`Download failed: ${response.status} - ${errorText}`);
       }
 
       // Get filename from Content-Disposition or use submission fileName

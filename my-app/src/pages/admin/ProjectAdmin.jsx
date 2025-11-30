@@ -3,7 +3,7 @@ import axiosInstance from '../../api/axiosConfig';
 import Table from '../../components/Table';
 import FileUpload from '../../components/FileUpload';
 import toast from 'react-hot-toast';
-import { Plus, Edit, Trash2, FolderKanban, Upload, Eye } from 'lucide-react';
+import { Plus, Edit, Trash2, FolderKanban, Upload, Eye, FileText, XCircle } from 'lucide-react';
 
 const ProjectAdmin = () => {
   const [projects, setProjects] = useState([]);
@@ -16,6 +16,7 @@ const ProjectAdmin = () => {
     isActive: true,
   });
   const [referenceFiles, setReferenceFiles] = useState([]);
+  const [uploadingFiles, setUploadingFiles] = useState(false);
 
   useEffect(() => {
     fetchProjects();
@@ -43,15 +44,47 @@ const ProjectAdmin = () => {
       const url = editingProject ? `/api/projects/${projectId}` : '/api/projects';
       const method = editingProject ? 'put' : 'post';
 
-      // Convert referenceFiles to array of strings (URLs or file names)
-      // For now, we'll send empty array if files aren't uploaded yet
-      const filesToSend = Array.isArray(referenceFiles) 
-        ? referenceFiles.map(file => typeof file === 'string' ? file : file.name || file.url || '')
-        : [];
+      // Separate files that need uploading from already uploaded files (strings)
+      const filesToUpload = referenceFiles.filter(file => file instanceof File);
+      const existingFiles = referenceFiles.filter(file => typeof file === 'string' && file.startsWith('reference-files/'));
 
+      let uploadedFilePaths = [...existingFiles];
+
+      // Upload new files if any
+      if (filesToUpload.length > 0) {
+        setUploadingFiles(true);
+        const formData = new FormData();
+        filesToUpload.forEach(file => {
+          formData.append('files', file);
+        });
+
+        try {
+          const uploadResponse = await axiosInstance.post('/api/projects/reference-files', formData, {
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            }
+          });
+
+          if (uploadResponse.data?.success && uploadResponse.data?.files) {
+            uploadedFilePaths = [...uploadedFilePaths, ...uploadResponse.data.files];
+            toast.success(`${filesToUpload.length} file(s) uploaded successfully`);
+          } else {
+            throw new Error('File upload failed');
+          }
+        } catch (uploadError) {
+          console.error('Error uploading files:', uploadError);
+          toast.error(uploadError.response?.data?.error || 'Failed to upload reference files');
+          setUploadingFiles(false);
+          return;
+        } finally {
+          setUploadingFiles(false);
+        }
+      }
+
+      // Save project with uploaded file paths
       const response = await axiosInstance[method](url, {
         ...formData,
-        referenceFiles: filesToSend,
+        referenceFiles: uploadedFilePaths,
       });
 
       if (response.data?.success) {
@@ -231,7 +264,30 @@ const ProjectAdmin = () => {
               <FileUpload
                 onFileSelect={handleFileSelect}
                 label="Upload reference files"
+                disabled={uploadingFiles}
               />
+              {referenceFiles.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  {referenceFiles.map((file, idx) => (
+                    <div key={idx} className="flex items-center gap-2 text-sm text-zocc-blue-300 bg-zocc-blue-800/30 p-2 rounded">
+                      <FileText size={16} />
+                      <span className="flex-1 truncate">
+                        {typeof file === 'string' ? file.split('/').pop() : file.name}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newFiles = referenceFiles.filter((_, i) => i !== idx);
+                          setReferenceFiles(newFiles);
+                        }}
+                        className="text-red-400 hover:text-red-300"
+                      >
+                        <XCircle size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <input

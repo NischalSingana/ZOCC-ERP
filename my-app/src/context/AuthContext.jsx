@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axiosInstance from '../api/axiosConfig';
-import toast from 'react-hot-toast';
+import { showToast } from '../utils/toastUtils';
 
 const AuthContext = createContext();
 
@@ -24,7 +24,7 @@ export const AuthProvider = ({ children }) => {
     axiosInstance.post('/api/auth/logout').catch(() => {
       // Ignore errors on logout
     });
-    toast.success('Logged out successfully');
+    showToast.success('Logged out successfully');
   }, []);
 
   const fetchUser = useCallback(async () => {
@@ -85,7 +85,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('authToken', token);
         localStorage.setItem('user', JSON.stringify(userData));
         setUser(userData);
-        toast.success('Login successful!');
+        showToast.success('Login successful!');
         return { success: true, user: userData };
       }
     } catch (error) {

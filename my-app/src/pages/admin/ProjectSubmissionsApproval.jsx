@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import axiosInstance from '../../api/axiosConfig';
 import Table from '../../components/Table';
-import toast from 'react-hot-toast';
+import { showToast } from '../../utils/toastUtils';
 import { CheckCircle, XCircle, Download, FileText, Filter, Eye, Clock, User, FolderKanban } from 'lucide-react';
 import { API_URL } from '../../utils/apiUrl';
 
@@ -46,7 +46,7 @@ const ProjectSubmissionsApproval = () => {
       }
     } catch (error) {
       console.error('Error fetching project submissions:', error);
-      toast.error('Failed to load project submissions');
+      showToast.error('Failed to load project submissions');
     } finally {
       setLoading(false);
     }
@@ -59,12 +59,12 @@ const ProjectSubmissionsApproval = () => {
       });
 
       if (response.data?.success) {
-        toast.success('Project submission approved');
+        showToast.success('Project submission approved');
         fetchSubmissions();
       }
     } catch (error) {
       console.error('Error approving submission:', error);
-      toast.error(error.response?.data?.error || 'Failed to approve submission');
+      showToast.error(error.response?.data?.error || 'Failed to approve submission');
     }
   };
 
@@ -75,12 +75,12 @@ const ProjectSubmissionsApproval = () => {
       });
 
       if (response.data?.success) {
-        toast.success('Project submission rejected');
+        showToast.success('Project submission rejected');
         fetchSubmissions();
       }
     } catch (error) {
       console.error('Error rejecting submission:', error);
-      toast.error(error.response?.data?.error || 'Failed to reject submission');
+      showToast.error(error.response?.data?.error || 'Failed to reject submission');
     }
   };
 
@@ -90,12 +90,12 @@ const ProjectSubmissionsApproval = () => {
       let fileUrl = submission.fileUrl;
       
       if (!fileUrl) {
-        toast.error('File URL not available');
+        showToast.success('File URL not available');
         return;
       }
 
       if (!token) {
-        toast.error('Please log in to download files');
+        showToast.success('Please log in to download files');
         return;
       }
 
@@ -117,12 +117,12 @@ const ProjectSubmissionsApproval = () => {
             console.warn('Could not extract R2 key from signed URL:', fileUrl);
             // Fallback: try to use the submission's stored fileUrl if available
             // But since we're getting signed URLs, we need to handle this differently
-            toast.error('Unable to extract file path from URL. Please contact admin.');
+            showToast.error('Unable to extract file path from URL. Please contact admin.');
             return;
           }
         } catch (e) {
           console.error('Error parsing signed URL:', e);
-          toast.error('Invalid file URL format');
+          showToast.error('Invalid file URL format');
           return;
         }
       }
@@ -131,7 +131,7 @@ const ProjectSubmissionsApproval = () => {
       // Ensure r2Key is an R2 key path (project-submissions/...)
       if (!r2Key.startsWith('project-submissions/')) {
         console.error('Invalid R2 key format:', r2Key);
-        toast.error('Invalid file path format');
+        showToast.error('Invalid file path format');
         return;
       }
 
@@ -145,15 +145,15 @@ const ProjectSubmissionsApproval = () => {
 
       if (!response.ok) {
         if (response.status === 401) {
-          toast.error('Authentication failed. Please log in again.');
+          showToast.error('Authentication failed. Please log in again.');
           return;
         }
         if (response.status === 403) {
-          toast.error('Access denied. You do not have permission to access this file.');
+          showToast.error('Access denied. You do not have permission to access this file.');
           return;
         }
         if (response.status === 404) {
-          toast.error('File not found. It may have been deleted.');
+          showToast.error('File not found. It may have been deleted.');
           return;
         }
         const errorText = await response.text().catch(() => 'Unknown error');
@@ -199,17 +199,17 @@ const ProjectSubmissionsApproval = () => {
         window.URL.revokeObjectURL(url);
       }, 200);
 
-      toast.success('File downloaded successfully');
+      showToast.success('File downloaded successfully');
     } catch (error) {
       console.error('Error downloading file:', error);
-      toast.error(error.message || 'Failed to download file');
+      showToast.error(error.message || 'Failed to download file');
     }
   };
 
   const handleViewImage = (submission) => {
     const fileUrl = submission.fileUrl;
     if (!fileUrl) {
-      toast.error('Image URL not available');
+      showToast.success('Image URL not available');
       return;
     }
 
@@ -439,7 +439,7 @@ const ProjectSubmissionsApproval = () => {
               className="max-w-full max-h-[90vh] object-contain rounded-lg"
               onError={(e) => {
                 console.error('Image load error:', e);
-                toast.error('Failed to load image');
+                showToast.error('Failed to load image');
                 setImageModalOpen(false);
               }}
             />

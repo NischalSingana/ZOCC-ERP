@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import axiosInstance from '../../api/axiosConfig';
 import Table from '../../components/Table';
-import toast from 'react-hot-toast';
+import { showToast } from '../../utils/toastUtils';
 import { CheckCircle, XCircle, Download, FileText, Filter, Eye, Image as ImageIcon, Trash2, Edit2, User } from 'lucide-react';
 import { API_URL } from '../../utils/apiUrl';
 
@@ -61,7 +61,7 @@ const SubmissionsApproval = () => {
       }
     } catch (error) {
       console.error('Error fetching submissions:', error);
-      toast.error(error.response?.data?.error || 'Failed to load submissions');
+      showToast.error(error.response?.data?.error || 'Failed to load submissions');
     } finally {
       setLoading(false);
     }
@@ -74,13 +74,13 @@ const SubmissionsApproval = () => {
       });
       
       if (response.data?.success) {
-        toast.success('Submission approved');
+        showToast.success('Submission approved');
         fetchSubmissions();
       }
     } catch (error) {
       console.error('Error approving submission:', error);
       const errorMsg = error.response?.data?.error || 'Failed to approve submission';
-      toast.error(errorMsg);
+      showToast.error(errorMsg);
     }
   };
 
@@ -91,19 +91,19 @@ const SubmissionsApproval = () => {
       });
       
       if (response.data?.success) {
-        toast.success('Submission rejected');
+        showToast.success('Submission rejected');
         fetchSubmissions();
       }
     } catch (error) {
       console.error('Error rejecting submission:', error);
       const errorMsg = error.response?.data?.error || 'Failed to reject submission';
-      toast.error(errorMsg);
+      showToast.error(errorMsg);
     }
   };
 
   const handleDownload = async (submission) => {
     if (!submission.fileUrl) {
-      toast.error('File URL is not available');
+      showToast.success('File URL is not available');
       return;
     }
 
@@ -132,7 +132,7 @@ const SubmissionsApproval = () => {
       } else if (fileUrl.startsWith('submissions/')) {
         fileKey = fileUrl;
       } else {
-        toast.error('Invalid file URL format');
+        showToast.error('Invalid file URL format');
         return;
       }
 
@@ -167,10 +167,10 @@ const SubmissionsApproval = () => {
 
       const blob = await response.blob();
       downloadBlob(blob, submission);
-      toast.success('File downloaded successfully');
+      showToast.success('File downloaded successfully');
     } catch (error) {
       console.error('Error downloading file:', error);
-      toast.error(error.message || 'Failed to download file');
+      showToast.error(error.message || 'Failed to download file');
       
       // Fallback: try opening in new tab
       try {
@@ -206,7 +206,7 @@ const SubmissionsApproval = () => {
 
   const handleViewImage = (submission) => {
     if (!submission.fileUrl) {
-      toast.error('File URL is not available');
+      showToast.success('File URL is not available');
       return;
     }
     const isImage = submission.fileType === 'image' ||
@@ -235,12 +235,12 @@ const SubmissionsApproval = () => {
       setCleaningUp(true);
       const response = await axiosInstance.delete('/api/admin/submissions/cleanup-old');
       if (response.data?.success) {
-        toast.success(`Successfully deleted ${response.data.deletedCount} old submissions`);
+        showToast.success(`Successfully deleted ${response.data.deletedCount} old submissions`);
         fetchSubmissions();
       }
     } catch (error) {
       console.error('Error cleaning up old submissions:', error);
-      toast.error(error.response?.data?.error || 'Failed to clean up old submissions');
+      showToast.error(error.response?.data?.error || 'Failed to clean up old submissions');
     } finally {
       setCleaningUp(false);
     }
@@ -266,14 +266,14 @@ const SubmissionsApproval = () => {
       });
 
       if (response.data?.success) {
-        toast.success('Submission updated successfully');
+        showToast.success('Submission updated successfully');
         setEditModalOpen(false);
         setEditingSubmission(null);
         fetchSubmissions();
       }
     } catch (error) {
       console.error('Error updating submission:', error);
-      toast.error(error.response?.data?.error || 'Failed to update submission');
+      showToast.error(error.response?.data?.error || 'Failed to update submission');
     }
   };
 
@@ -284,7 +284,7 @@ const SubmissionsApproval = () => {
       setViewingStudent(student);
       setViewStudentModalOpen(true);
     } else {
-      toast.error('Student details not available');
+      showToast.success('Student details not available');
     }
   };
 
@@ -482,7 +482,7 @@ const SubmissionsApproval = () => {
               onClick={(e) => e.stopPropagation()}
               onError={(e) => {
                 console.error('Image failed to load in modal:', selectedImageUrl);
-                toast.error('Failed to load image');
+                showToast.error('Failed to load image');
               }}
             />
             <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/60 text-white px-4 py-2 rounded-lg text-sm backdrop-blur-sm">

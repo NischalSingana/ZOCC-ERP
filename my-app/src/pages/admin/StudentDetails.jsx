@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import axiosInstance from '../../api/axiosConfig';
 import { User, Mail, Phone, GraduationCap, Edit, Save, X, Key } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { showToast } from '../../utils/toastUtils';
 
 const StudentDetails = () => {
   const [searchParams] = useSearchParams();
@@ -45,7 +45,7 @@ const StudentDetails = () => {
       }
     } catch (error) {
       console.error('Error fetching student details:', error);
-      toast.error('Failed to load student details');
+      showToast.error('Failed to load student details');
     } finally {
       setLoading(false);
     }
@@ -61,13 +61,13 @@ const StudentDetails = () => {
       });
 
       if (response.data?.success || response.data?.user) {
-        toast.success('Student details updated successfully');
+        showToast.success('Student details updated successfully');
         setStudentData(response.data.user || studentData);
         setIsEditing(false);
       }
     } catch (error) {
       console.error('Error updating student:', error);
-      toast.error('Failed to update student details');
+      showToast.error('Failed to update student details');
     }
   };
 
@@ -79,10 +79,10 @@ const StudentDetails = () => {
     try {
       // API call to reset password
       await axiosInstance.post(`/api/admin/students/${studentData.id}/reset-password`);
-      toast.success('Password reset email sent to student');
+      showToast.success('Password reset email sent to student');
     } catch (error) {
       console.error('Error resetting password:', error);
-      toast.error('Failed to reset password');
+      showToast.error('Failed to reset password');
     }
   };
 

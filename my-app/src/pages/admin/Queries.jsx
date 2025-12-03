@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axiosInstance from '../../api/axiosConfig';
-import toast from 'react-hot-toast';
+import { showToast } from '../../utils/toastUtils';
 import { MessageSquare, Send, CheckCircle, Clock, AlertCircle, Search, Filter } from 'lucide-react';
 
 const AdminQueries = () => {
@@ -25,7 +25,7 @@ const AdminQueries = () => {
             }
         } catch (error) {
             console.error('Error fetching queries:', error);
-            toast.error('Failed to load queries');
+            showToast.error('Failed to load queries');
         } finally {
             setLoading(false);
         }
@@ -48,19 +48,19 @@ const AdminQueries = () => {
             });
 
             if (response.data?.success) {
-                toast.success('Query marked as resolved');
+                showToast.success('Query marked as resolved');
                 fetchQueries();
             }
         } catch (error) {
             console.error('Error resolving query:', error);
-            toast.error('Failed to resolve query');
+            showToast.error('Failed to resolve query');
         }
     };
 
     const submitReply = async (e) => {
         e.preventDefault();
         if (!replyMessage.trim()) {
-            toast.error('Reply message cannot be empty');
+            showToast.success('Reply message cannot be empty');
             return;
         }
 
@@ -71,13 +71,13 @@ const AdminQueries = () => {
             });
 
             if (response.data?.success) {
-                toast.success('Reply sent successfully');
+                showToast.success('Reply sent successfully');
                 setReplyModalOpen(false);
                 fetchQueries();
             }
         } catch (error) {
             console.error('Error sending reply:', error);
-            toast.error('Failed to send reply');
+            showToast.error('Failed to send reply');
         }
     };
 

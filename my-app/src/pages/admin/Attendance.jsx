@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import axiosInstance from '../../api/axiosConfig';
 import Table from '../../components/Table';
-import toast from 'react-hot-toast';
+import { showToast } from '../../utils/toastUtils';
 import { Calendar, Users, Download, CheckCircle, XCircle, Clock } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
@@ -33,7 +33,7 @@ const AttendanceAdmin = () => {
       }
     } catch (error) {
       console.error('Error fetching sessions:', error);
-      toast.error('Failed to load sessions');
+      showToast.error('Failed to load sessions');
     } finally {
       setLoading(false);
     }
@@ -46,11 +46,11 @@ const AttendanceAdmin = () => {
       if (response.data?.success) {
         setAttendance(response.data.attendance || []);
       } else {
-        toast.error('Failed to load attendance');
+        showToast.error('Failed to load attendance');
       }
     } catch (error) {
       console.error('Error fetching attendance:', error);
-      toast.error(error.response?.data?.error || 'Failed to load attendance');
+      showToast.error(error.response?.data?.error || 'Failed to load attendance');
     } finally {
       setLoading(false);
     }
@@ -60,7 +60,7 @@ const AttendanceAdmin = () => {
     try {
       const sessionId = selectedSession?.id || selectedSession?._id;
       if (!sessionId) {
-        toast.error('Please select a session first');
+        showToast.success('Please select a session first');
         return;
       }
       
@@ -72,22 +72,22 @@ const AttendanceAdmin = () => {
         userId: userIdString,
         status: status.toLowerCase(),
       });
-      toast.success('Attendance marked successfully');
+      showToast.success('Attendance marked successfully');
       fetchAttendance(sessionId);
     } catch (error) {
       console.error('Error marking attendance:', error);
-      toast.error(error.response?.data?.error || 'Failed to mark attendance');
+      showToast.error(error.response?.data?.error || 'Failed to mark attendance');
     }
   };
 
   const handleExportExcel = () => {
     if (!selectedSession) {
-      toast.error('Please select a session first');
+      showToast.success('Please select a session first');
       return;
     }
 
     if (!attendance || attendance.length === 0) {
-      toast.error('No attendance data to export');
+      showToast.success('No attendance data to export');
       return;
     }
 
@@ -131,10 +131,10 @@ const AttendanceAdmin = () => {
 
       // Write file
       XLSX.writeFile(wb, filename);
-      toast.success('Attendance exported successfully');
+      showToast.success('Attendance exported successfully');
     } catch (error) {
       console.error('Error exporting Excel:', error);
-      toast.error('Failed to export attendance');
+      showToast.error('Failed to export attendance');
     }
   };
 

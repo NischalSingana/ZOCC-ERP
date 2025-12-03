@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import axiosInstance from '../../api/axiosConfig';
 import Table from '../../components/Table';
 import FileUpload from '../../components/FileUpload';
-import toast from 'react-hot-toast';
+import { showToast } from '../../utils/toastUtils';
 import { Plus, Edit, Trash2, FolderKanban, Upload, Eye, FileText, XCircle } from 'lucide-react';
 
 const ProjectAdmin = () => {
@@ -31,7 +31,7 @@ const ProjectAdmin = () => {
       }
     } catch (error) {
       console.error('Error fetching projects:', error);
-      toast.error('Failed to load projects');
+      showToast.error('Failed to load projects');
     } finally {
       setLoading(false);
     }
@@ -67,13 +67,13 @@ const ProjectAdmin = () => {
 
           if (uploadResponse.data?.success && uploadResponse.data?.files) {
             uploadedFilePaths = [...uploadedFilePaths, ...uploadResponse.data.files];
-            toast.success(`${filesToUpload.length} file(s) uploaded successfully`);
+            showToast.success(`${filesToUpload.length} file(s) uploaded successfully`);
           } else {
             throw new Error('File upload failed');
           }
         } catch (uploadError) {
           console.error('Error uploading files:', uploadError);
-          toast.error(uploadError.response?.data?.error || 'Failed to upload reference files');
+          showToast.error(uploadError.response?.data?.error || 'Failed to upload reference files');
           setUploadingFiles(false);
           return;
         } finally {
@@ -88,7 +88,7 @@ const ProjectAdmin = () => {
       });
 
       if (response.data?.success) {
-        toast.success(editingProject ? 'Project updated!' : 'Project created!');
+        showToast.success(editingProject ? 'Project updated!' : 'Project created!');
         setShowForm(false);
         setEditingProject(null);
         setFormData({ title: '', description: '', isActive: true });
@@ -97,13 +97,13 @@ const ProjectAdmin = () => {
       }
     } catch (error) {
       console.error('Error saving project:', error);
-      toast.error(error.response?.data?.error || 'Failed to save project');
+      showToast.error(error.response?.data?.error || 'Failed to save project');
     }
   };
 
   const handleDelete = async (projectId) => {
     if (!projectId) {
-      toast.error('Invalid project ID');
+      showToast.error('Invalid project ID');
       return;
     }
     
@@ -112,11 +112,11 @@ const ProjectAdmin = () => {
     try {
       const idString = projectId?.toString() || projectId;
       await axiosInstance.delete(`/api/projects/${idString}`);
-      toast.success('Project deleted!');
+      showToast.success('Project deleted!');
       fetchProjects();
     } catch (error) {
       console.error('Error deleting project:', error);
-      toast.error(error.response?.data?.error || 'Failed to delete project');
+      showToast.error(error.response?.data?.error || 'Failed to delete project');
     }
   };
 

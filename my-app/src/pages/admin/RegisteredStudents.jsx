@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import axiosInstance from '../../api/axiosConfig';
 import Table from '../../components/Table';
-import toast from 'react-hot-toast';
+import { showToast } from '../../utils/toastUtils';
 import { Search, Users, Eye, Edit } from 'lucide-react';
 
 const RegisteredStudents = () => {
@@ -22,11 +22,11 @@ const RegisteredStudents = () => {
       if (response.data?.success) {
         setStudents(response.data.students || []);
       } else {
-        toast.error('Failed to load students');
+        showToast.error('Failed to load students');
       }
     } catch (error) {
       console.error('Error fetching students:', error);
-      toast.error(error.response?.data?.error || 'Failed to load students');
+      showToast.error(error.response?.data?.error || 'Failed to load students');
     } finally {
       setLoading(false);
     }

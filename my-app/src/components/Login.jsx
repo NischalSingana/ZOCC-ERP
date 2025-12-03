@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, Shield } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -38,6 +38,7 @@ export default function Login() {
   const [captchaVerified, setCaptchaVerified] = useState(false)
   const [loginLoading, setLoginLoading] = useState(false)
   const [loginError, setLoginError] = useState('')
+  const loginFormRef = useRef(null)
 
   const [studentFullName, setStudentFullName] = useState('')
   const [idNumber, setIdNumber] = useState('')
@@ -95,7 +96,16 @@ export default function Login() {
           <h2 className="animation" style={{ ['--D']: 0, ['--S']: 21 }}>
             {isAdminMode ? 'Admin Login' : 'Login'}
           </h2>
+          {/* 
+            Form configured for browser password manager:
+            - Uses proper semantic form with method="post" and autoComplete="on"
+            - Email input has name="email" and autoComplete="username"
+            - Password input has name="password" and autoComplete="current-password"
+            - After successful AJAX login, form is submitted to hidden iframe to trigger password save
+            - IMPORTANT: Password managers work best over HTTPS in production
+          */}
           <form 
+            ref={loginFormRef}
             onSubmit={async (e) => {
               e.preventDefault()
               if ((!isAdminMode && !captchaVerified) || !loginEmail || !loginPass) return
@@ -106,7 +116,34 @@ export default function Login() {
               try {
                 const result = await login(loginEmail.toLowerCase().trim(), loginPass)
                 if (result.success) {
-                  // Browser will prompt to save credentials after successful login
+                  // Trigger browser's "Save Password" prompt by allowing form submission detection
+                  // The browser needs to see the successful submission to offer saving credentials
+                  // Note: This works best over HTTPS
+                  if (loginFormRef.current) {
+                    // Create a temporary hidden iframe to submit the form to
+                    // This allows the browser to detect the successful login without page refresh
+                    const iframe = document.createElement('iframe')
+                    iframe.style.display = 'none'
+                    iframe.name = 'password-save-frame'
+                    document.body.appendChild(iframe)
+                    
+                    loginFormRef.current.target = 'password-save-frame'
+                    loginFormRef.current.action = `${API_URL}/api/auth/login`
+                    
+                    // Let browser detect the submission
+                    setTimeout(() => {
+                      if (loginFormRef.current) {
+                        loginFormRef.current.submit()
+                      }
+                      // Clean up iframe after a short delay
+                      setTimeout(() => {
+                        if (iframe.parentNode) {
+                          iframe.parentNode.removeChild(iframe)
+                        }
+                      }, 1000)
+                    }, 100)
+                  }
+                  
                   navigate('/dashboard')
                 } else {
                   setLoginError(result.error || 'Login failed. Please check your credentials.')
@@ -135,7 +172,7 @@ export default function Login() {
               <box-icon name='envelope' type='solid' color="gray"></box-icon>
             </div>
 
-            <div className="input-box animation" style={{ ['--D']: 2, ['--S']: 23 }}>
+            <div className="input-box animation" style={{ ['--D']: 2, ['--S']: 23 }} data-password-visible={showLoginPass}>
               <input
                 type={showLoginPass ? 'text' : 'password'}
                 name="password"
@@ -144,6 +181,7 @@ export default function Login() {
                 required
                 value={loginPass}
                 onChange={e => setLoginPass(e.target.value)}
+                key={`login-pass-${showLoginPass}`}
               />
               <label htmlFor="login-password">Password</label>
               <box-icon name='lock-alt' type='solid' color="gray"></box-icon>
@@ -386,12 +424,15 @@ export default function Login() {
                 </div>
               )}
 
-              <div className="input-box animation" style={{ ['--li']: 20, ['--S']: 3 }}>
+              <div className="input-box animation" style={{ ['--li']: 20, ['--S']: 3 }} data-password-visible={showRegPass}>
                 <input
                   type={showRegPass ? 'text' : 'password'}
+                  name="new-password"
+                  autoComplete="new-password"
                   required
                   value={regPass}
                   onChange={e => setRegPass(e.target.value)}
+                  key={`reg-pass-${showRegPass}`}
                 />
                 <label>Password</label>
                 <box-icon name='lock-alt' type='solid' color="gray"></box-icon>
@@ -405,12 +446,15 @@ export default function Login() {
                 </button>
               </div>
 
-              <div className="input-box animation" style={{ ['--li']: 20.2, ['--S']: 3.2 }}>
+              <div className="input-box animation" style={{ ['--li']: 20.2, ['--S']: 3.2 }} data-password-visible={showConfirmPass}>
                 <input
                   type={showConfirmPass ? 'text' : 'password'}
+                  name="confirm-password"
+                  autoComplete="new-password"
                   required
                   value={confirmPass}
                   onChange={e => setConfirmPass(e.target.value)}
+                  key={`confirm-pass-${showConfirmPass}`}
                 />
                 <label>Confirm Password</label>
                 <box-icon name='lock-alt' type='solid' color="gray"></box-icon>
@@ -696,13 +740,16 @@ export default function Login() {
                   OTP verified successfully! Please set your new password.
                 </div>
 
-                <div className="input-box">
+                <div className="input-box" data-password-visible={showNewPassword}>
                   <input
                     type={showNewPassword ? 'text' : 'password'}
+                    name="new-password"
+                    autoComplete="new-password"
                     required
                     value={newPassword}
                     onChange={e => setNewPassword(e.target.value)}
                     placeholder="Enter new password"
+                    key={`new-pass-${showNewPassword}`}
                   />
                   <label>New Password</label>
                   <box-icon name='lock-alt' type='solid' color="gray"></box-icon>
@@ -716,13 +763,16 @@ export default function Login() {
                   </button>
                 </div>
 
-                <div className="input-box">
+                <div className="input-box" data-password-visible={showConfirmPassword}>
                   <input
                     type={showConfirmPassword ? 'text' : 'password'}
+                    name="confirm-password"
+                    autoComplete="new-password"
                     required
                     value={confirmPassword}
                     onChange={e => setConfirmPassword(e.target.value)}
                     placeholder="Confirm new password"
+                    key={`confirm-new-pass-${showConfirmPassword}`}
                   />
                   <label>Confirm Password</label>
                   <box-icon name='lock-alt' type='solid' color="gray"></box-icon>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Upload, Eye, CheckCircle, Clock, XCircle, Loader, FileText, Image as ImageIcon } from 'lucide-react';
 import { API_URL } from '../utils/apiUrl';
+import { showToast } from '../utils/toastUtils';
 
 const Submissions = () => {
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
@@ -129,6 +130,9 @@ const Submissions = () => {
         throw new Error(data.error || 'Upload failed');
       }
 
+      // Show success toast
+      showToast.success('Submission uploaded successfully! It will be reviewed soon.');
+
       // Refresh submissions list
       await fetchSubmissions();
 
@@ -140,7 +144,9 @@ const Submissions = () => {
       setUploadError('');
     } catch (error) {
       console.error('Upload error:', error);
-      setUploadError(error.message || 'Failed to upload submission. Please try again.');
+      const errorMessage = error.message || 'Failed to upload submission. Please try again.';
+      setUploadError(errorMessage);
+      showToast.error(errorMessage);
     } finally {
       setUploading(false);
     }

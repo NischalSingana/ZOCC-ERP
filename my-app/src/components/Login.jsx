@@ -2,9 +2,9 @@ import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, Shield } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { showToast } from '../utils/toastUtils'
 import './Login.css'
 import Captcha from './Captcha.jsx'
-import Toast from './Toast.jsx'
 import { API_URL } from '../utils/apiUrl'
 
 // Helper function to fetch with timeout
@@ -223,30 +223,45 @@ export default function Login() {
                   
                   navigate('/dashboard')
                 } else {
-                  // Provide specific error messages
+                  // Provide specific error messages with toast notifications
                   const errorMsg = result.error || 'Login failed'
-                  if (errorMsg.toLowerCase().includes('user not found') || errorMsg.toLowerCase().includes('no user')) {
-                    setLoginError('No account found with this email. Please sign up first.')
-                  } else if (errorMsg.toLowerCase().includes('password') || errorMsg.toLowerCase().includes('incorrect')) {
-                    setLoginError('Incorrect password. Please try again or reset your password.')
+                  let toastMessage = ''
+                  
+                  if (errorMsg.toLowerCase().includes('user not found') || errorMsg.toLowerCase().includes('no user') || errorMsg.toLowerCase().includes('invalid email')) {
+                    toastMessage = 'No account found with this email. Please sign up first.'
+                    setLoginError(toastMessage)
+                  } else if (errorMsg.toLowerCase().includes('password') || errorMsg.toLowerCase().includes('incorrect') || errorMsg.toLowerCase().includes('invalid')) {
+                    toastMessage = 'Incorrect password. Please try again or reset your password.'
+                    setLoginError(toastMessage)
                   } else if (errorMsg.toLowerCase().includes('verified') || errorMsg.toLowerCase().includes('verify')) {
-                    setLoginError('Please verify your email address before logging in.')
+                    toastMessage = 'Please verify your email address before logging in.'
+                    setLoginError(toastMessage)
                   } else if (errorMsg.toLowerCase().includes('banned') || errorMsg.toLowerCase().includes('suspended')) {
-                    setLoginError('Your account has been suspended. Please contact support.')
+                    toastMessage = 'Your account has been suspended. Please contact support.'
+                    setLoginError(toastMessage)
                   } else {
+                    toastMessage = errorMsg
                     setLoginError(errorMsg)
+                  }
+                  
+                  // Show toast notification for login errors
+                  if (toastMessage) {
+                    showToast.error(toastMessage)
                   }
                 }
               } catch (err) {
                 console.error('Login error:', err)
-                // Handle different types of errors
+                // Handle different types of errors with toast notifications
+                let errorMessage = ''
                 if (err.message.includes('timeout') || err.message.includes('Timeout')) {
-                  setLoginError('Connection timeout. Please check your internet connection and try again.')
+                  errorMessage = 'Connection timeout. Please check your internet connection and try again.'
                 } else if (err.message.includes('fetch') || err.message.includes('Network')) {
-                  setLoginError('Unable to connect to server. Please try again later.')
+                  errorMessage = 'Unable to connect to server. Please try again later.'
                 } else {
-                  setLoginError(err.message || 'An unexpected error occurred. Please try again.')
+                  errorMessage = err.message || 'An unexpected error occurred. Please try again.'
                 }
+                setLoginError(errorMessage)
+                showToast.error(errorMessage)
               } finally {
                 setLoginLoading(false)
               }

@@ -12,14 +12,12 @@
   position: relative; 
   width: 750px; 
   max-width: 92vw; 
-  height: 520px; 
+  height: 550px; 
   border: 2px solid #1d4ed8; 
   box-shadow: 0 0 25px rgba(37,99,235,0.55); 
   overflow: hidden; 
   border-radius: 16px; 
   background: #0b1220; 
-  scrollbar-width: thin;
-  scrollbar-color: rgba(79, 156, 255, 0.3) transparent;
 }
 
 .animated-auth .form-box{ 
@@ -28,25 +26,29 @@
   width: 50%; 
   height: 100%; 
   display: flex; 
-  justify-content: flex-start; 
+  justify-content: center; 
   flex-direction: column; 
   pointer-events: auto;
   z-index: 10;
-  overflow-y: auto;
-  overflow-x: hidden;
-  scroll-behavior: smooth;
-  padding-top: 20px;
-  padding-bottom: 20px;
+  overflow: hidden;
+  padding-top: 0;
+  padding-bottom: 0;
 }
 .animated-auth .form-box.Login{ 
   left: 0; 
-  padding-left: 40px; 
-  padding-right: 40px; 
+  padding-left: 35px; 
+  padding-right: 35px; 
 }
 .animated-auth .form-box.Register{ 
   right: 0; 
-  padding-left: 60px; 
-  padding-right: 60px; 
+  padding-left: 50px; 
+  padding-right: 50px; 
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+  justify-content: flex-start;
+  padding-top: 20px;
+  padding-bottom: 20px;
 }
 
 /* Custom scrollbar for form boxes */
@@ -65,12 +67,12 @@
 }
 
 .animated-auth .form-box h2{ 
-  font-size: 38px; 
+  font-size: 32px; 
   text-align: center; 
-  margin-bottom: 24px; 
+  margin-bottom: 16px; 
   margin-top: 0;
   font-weight: 800;
-  letter-spacing: -1px;
+  letter-spacing: -0.5px;
   color: #fff;
   font-family: 'Plus Jakarta Sans', sans-serif;
   line-height: 1.2;
@@ -82,8 +84,8 @@
 .animated-auth .form-box .input-box{ 
   position: relative; 
   width: 100%; 
-  height: 56px; 
-  margin-top: 18px; 
+  height: 52px; 
+  margin-top: 14px; 
   flex-shrink: 0;
 }
 .animated-auth .input-box input{ 
@@ -92,13 +94,13 @@
   background: rgba(2, 6, 23, 0.6) !important; 
   border: 1px solid #334155 !important; 
   outline: none; 
-  font-size: 16px; 
+  font-size: 15px; 
   color: #ffffff; 
   font-weight: 500; 
   border-radius: 12px; 
   padding-left: 14px;
   padding-right: 40px; 
-  padding-top: 22px; /* more room so label can sit lower by default */
+  padding-top: 20px; 
   transition: border-color .2s ease, box-shadow .2s ease; 
   position: relative;
   z-index: 15;
@@ -114,6 +116,75 @@
 /* Extra padding for password inputs with toggle */
 .animated-auth .input-box:has(.password-toggle) input {
   padding-right: 70px;
+  font-family: "Geist Mono", monospace;
+  letter-spacing: 0.2ch;
+  transition: border-color 0.2s, color 0.2s;
+  position: relative;
+}
+
+/* Character reveal scanning effect */
+.animated-auth .input-box:has(.password-toggle)::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 14px;
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    rgba(96, 165, 250, 0.2) 50%, 
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 25;
+  opacity: 0;
+}
+
+/* Trigger scanning animation when password visibility changes */
+.animated-auth .input-box[data-password-visible="true"]::after,
+.animated-auth .input-box[data-password-visible="false"]::after {
+  animation: characterScan 0.6s ease-out;
+}
+
+/* Password reveal animation - rolling effect */
+@keyframes passwordReveal {
+  0% {
+    opacity: 0;
+    filter: blur(10px);
+    transform: translateX(-10px);
+    letter-spacing: 0.5ch;
+  }
+  50% {
+    filter: blur(5px);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0px);
+    transform: translateX(0);
+    letter-spacing: 0.2ch;
+  }
+}
+
+/* Character-by-character scanning reveal effect */
+@keyframes characterScan {
+  0% {
+    width: 0%;
+    opacity: 1;
+  }
+  100% {
+    width: 100%;
+    opacity: 0;
+  }
+}
+
+/* Apply animation when password becomes visible */
+.animated-auth .input-box:has(.password-toggle) input[type="text"] {
+  animation: passwordReveal 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Apply animation when password becomes hidden */
+.animated-auth .input-box:has(.password-toggle) input[type="password"] {
+  animation: passwordReveal 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Disabled/read-only input styling */
@@ -139,10 +210,10 @@
 }
 .animated-auth .input-box label{ 
   position: absolute; 
-  top: 22px; /* sit down inside the input by default */
+  top: 20px; 
   left: 14px; 
   transform: none; 
-  font-size: 15px; 
+  font-size: 14px; 
   color: #9ca3af; 
   transition: top .18s cubic-bezier(.2,.8,.2,1), color .18s ease, font-size .18s ease; 
   pointer-events: none;
@@ -159,9 +230,9 @@
 .animated-auth .input-box input:not(:placeholder-shown) ~ label,
 .animated-auth .input-box input[value]:not([value=""]) ~ label,
 .animated-auth .input-box input:not([value=""]) ~ label{ 
-  top: 6px; /* animate up on focus/typing */
+  top: 5px; 
   color: #93c5fd !important; 
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
 }
 
@@ -250,9 +321,9 @@
 /* Forgot Password Link */
 .forgot-password-link {
   text-align: right;
-  margin-top: 8px;
-  margin-bottom: 4px;
-  font-size: 14px;
+  margin-top: 6px;
+  margin-bottom: 2px;
+  font-size: 13px;
 }
 
 .forgot-password-link a {
@@ -271,18 +342,18 @@
 .animated-auth .btn{ 
   position: relative; 
   width: 100%; 
-  height: 56px; 
+  height: 50px; 
   background: transparent; 
   border-radius: 14px; 
   cursor: pointer; 
-  font-size: 16px; 
+  font-size: 15px; 
   font-weight: 700; 
   border: 2px solid #2563eb; 
   overflow: hidden; 
   z-index: 1; 
   color: #fff; 
   transition: all 0.3s ease;
-  margin-top: 12px;
+  margin-top: 10px;
   flex-shrink: 0;
   font-family: 'Plus Jakarta Sans', sans-serif;
   letter-spacing: 0.02em;
@@ -308,11 +379,11 @@
 }
 
 .animated-auth .regi-link{ 
-  font-size: 15px; 
+  font-size: 14px; 
   text-align: center; 
-  margin: 18px 0 10px; 
+  margin: 14px 0 0; 
   flex-shrink: 0;
-  line-height: 1.8;
+  line-height: 1.6;
   font-family: 'Inter', sans-serif;
   font-weight: 400;
   color: rgba(255, 255, 255, 0.9);
@@ -321,7 +392,7 @@
   text-decoration: none; 
   color: rgba(255, 255, 255, 0.65); 
   font-weight: 500; 
-  font-size: 14px;
+  font-size: 13px;
   transition: color 0.3s ease;
 }
 .animated-auth .regi-link a:hover{ 
@@ -333,11 +404,11 @@
 .btn-verify-email,
 .btn-verify-otp {
   width: 100%;
-  height: 54px;
+  height: 48px;
   background: transparent;
   border-radius: 14px;
   cursor: pointer;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
   border: 2px solid #2563eb;
   color: #fff;
@@ -378,16 +449,16 @@
 }
 
 .otp-error {
-  font-size: 14px;
+  font-size: 13px;
   color: #f87171;
   text-align: center;
-  margin-top: 12px;
-  margin-bottom: 8px;
-  padding: 14px 18px;
+  margin-top: 10px;
+  margin-bottom: 6px;
+  padding: 10px 14px;
   background: rgba(248, 113, 113, 0.1);
-  border-radius: 12px;
+  border-radius: 10px;
   border: 1px solid rgba(248, 113, 113, 0.3);
-  line-height: 1.6;
+  line-height: 1.5;
   flex-shrink: 0;
   font-family: 'Inter', sans-serif;
   font-weight: 500;
@@ -717,6 +788,44 @@
 /* Extra padding for password inputs with toggle in modal */
 .forgot-password-content .input-box:has(.password-toggle) input {
   padding-right: 70px;
+  font-family: "Geist Mono", monospace;
+  letter-spacing: 0.2ch;
+  transition: border-color 0.2s, color 0.2s;
+  position: relative;
+}
+
+/* Character reveal scanning effect in modal */
+.forgot-password-content .input-box:has(.password-toggle)::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    rgba(96, 165, 250, 0.2) 50%, 
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 25;
+  opacity: 0;
+}
+
+/* Trigger scanning animation when password visibility changes in modal */
+.forgot-password-content .input-box[data-password-visible="true"]::after,
+.forgot-password-content .input-box[data-password-visible="false"]::after {
+  animation: characterScan 0.6s ease-out;
+}
+
+/* Apply animation when password becomes visible in modal */
+.forgot-password-content .input-box:has(.password-toggle) input[type="text"] {
+  animation: passwordReveal 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Apply animation when password becomes hidden in modal */
+.forgot-password-content .input-box:has(.password-toggle) input[type="password"] {
+  animation: passwordReveal 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .forgot-password-content .btn {

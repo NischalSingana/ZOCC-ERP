@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import axiosInstance from '../../api/axiosConfig';
 import Table from '../../components/Table';
 import { showToast } from '../../utils/toastUtils';
-import { CheckCircle, XCircle, Download, FileText, Filter, Eye, Image as ImageIcon, Trash2, Edit2, User } from 'lucide-react';
+import { CheckCircle, XCircle, Download, FileText, Filter, Eye, Image as ImageIcon, Edit2, User } from 'lucide-react';
 import { API_URL } from '../../utils/apiUrl';
 
 const SubmissionsApproval = () => {
@@ -11,7 +11,6 @@ const SubmissionsApproval = () => {
   const [filter, setFilter] = useState('all'); // all, pending, accepted, rejected
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [selectedImageUrl, setSelectedImageUrl] = useState(null);
-  const [cleaningUp, setCleaningUp] = useState(false);
 
   // Edit State
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -226,25 +225,6 @@ const SubmissionsApproval = () => {
     setImageModalOpen(true);
   };
 
-  const handleCleanupOldSubmissions = async () => {
-    if (!window.confirm('Are you sure you want to delete all old submissions from the old bucket? This action cannot be undone.')) {
-      return;
-    }
-
-    try {
-      setCleaningUp(true);
-      const response = await axiosInstance.delete('/api/admin/submissions/cleanup-old');
-      if (response.data?.success) {
-        showToast.success(`Successfully deleted ${response.data.deletedCount} old submissions`);
-        fetchSubmissions();
-      }
-    } catch (error) {
-      console.error('Error cleaning up old submissions:', error);
-      showToast.error(error.response?.data?.error || 'Failed to clean up old submissions');
-    } finally {
-      setCleaningUp(false);
-    }
-  };
 
   const handleEdit = (submission) => {
     setEditingSubmission(submission);
@@ -422,15 +402,6 @@ const SubmissionsApproval = () => {
           Submissions Approval
         </h1>
         <div className="flex gap-2 items-center">
-          <button
-            onClick={handleCleanupOldSubmissions}
-            disabled={cleaningUp}
-            className="px-4 py-2 rounded-lg transition-all bg-red-600/20 text-red-400 hover:bg-red-600/30 border border-red-600/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            title="Delete all old submissions from old bucket"
-          >
-            <Trash2 size={18} />
-            {cleaningUp ? 'Cleaning...' : 'Clean Old Submissions'}
-          </button>
           {['all', 'pending', 'accepted', 'rejected'].map((status) => (
             <button
               key={status}

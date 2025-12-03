@@ -12,7 +12,7 @@
   position: relative; 
   width: 750px; 
   max-width: 92vw; 
-  height: 550px; 
+  height: 580px; 
   border: 2px solid #1d4ed8; 
   box-shadow: 0 0 25px rgba(37,99,235,0.55); 
   overflow: hidden; 
@@ -67,9 +67,9 @@
 }
 
 .animated-auth .form-box h2{ 
-  font-size: 32px; 
+  font-size: 36px; 
   text-align: center; 
-  margin-bottom: 16px; 
+  margin-bottom: 20px; 
   margin-top: 0;
   font-weight: 800;
   letter-spacing: -0.5px;
@@ -84,8 +84,8 @@
 .animated-auth .form-box .input-box{ 
   position: relative; 
   width: 100%; 
-  height: 52px; 
-  margin-top: 14px; 
+  height: 56px; 
+  margin-top: 16px; 
   flex-shrink: 0;
 }
 .animated-auth .input-box input{ 
@@ -94,13 +94,13 @@
   background: rgba(2, 6, 23, 0.6) !important; 
   border: 1px solid #334155 !important; 
   outline: none; 
-  font-size: 15px; 
+  font-size: 16px; 
   color: #ffffff; 
   font-weight: 500; 
   border-radius: 12px; 
   padding-left: 14px;
   padding-right: 40px; 
-  padding-top: 20px; 
+  padding-top: 22px; 
   transition: border-color .2s ease, box-shadow .2s ease; 
   position: relative;
   z-index: 15;
@@ -210,10 +210,10 @@
 }
 .animated-auth .input-box label{ 
   position: absolute; 
-  top: 20px; 
+  top: 22px; 
   left: 14px; 
   transform: none; 
-  font-size: 14px; 
+  font-size: 15px; 
   color: #9ca3af; 
   transition: top .18s cubic-bezier(.2,.8,.2,1), color .18s ease, font-size .18s ease; 
   pointer-events: none;
@@ -230,9 +230,9 @@
 .animated-auth .input-box input:not(:placeholder-shown) ~ label,
 .animated-auth .input-box input[value]:not([value=""]) ~ label,
 .animated-auth .input-box input:not([value=""]) ~ label{ 
-  top: 5px; 
+  top: 6px; 
   color: #93c5fd !important; 
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
 }
 
@@ -321,9 +321,9 @@
 /* Forgot Password Link */
 .forgot-password-link {
   text-align: right;
-  margin-top: 6px;
-  margin-bottom: 2px;
-  font-size: 13px;
+  margin-top: 8px;
+  margin-bottom: 4px;
+  font-size: 14px;
 }
 
 .forgot-password-link a {
@@ -342,18 +342,18 @@
 .animated-auth .btn{ 
   position: relative; 
   width: 100%; 
-  height: 50px; 
+  height: 54px; 
   background: transparent; 
   border-radius: 14px; 
   cursor: pointer; 
-  font-size: 15px; 
+  font-size: 16px; 
   font-weight: 700; 
   border: 2px solid #2563eb; 
   overflow: hidden; 
   z-index: 1; 
   color: #fff; 
   transition: all 0.3s ease;
-  margin-top: 10px;
+  margin-top: 14px;
   flex-shrink: 0;
   font-family: 'Plus Jakarta Sans', sans-serif;
   letter-spacing: 0.02em;
@@ -379,11 +379,11 @@
 }
 
 .animated-auth .regi-link{ 
-  font-size: 14px; 
+  font-size: 15px; 
   text-align: center; 
-  margin: 14px 0 0; 
+  margin: 16px 0 0; 
   flex-shrink: 0;
-  line-height: 1.6;
+  line-height: 1.7;
   font-family: 'Inter', sans-serif;
   font-weight: 400;
   color: rgba(255, 255, 255, 0.9);
@@ -392,7 +392,7 @@
   text-decoration: none; 
   color: rgba(255, 255, 255, 0.65); 
   font-weight: 500; 
-  font-size: 13px;
+  font-size: 14px;
   transition: color 0.3s ease;
 }
 .animated-auth .regi-link a:hover{ 
@@ -404,11 +404,11 @@
 .btn-verify-email,
 .btn-verify-otp {
   width: 100%;
-  height: 48px;
+  height: 52px;
   background: transparent;
   border-radius: 14px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   border: 2px solid #2563eb;
   color: #fff;
@@ -449,12 +449,12 @@
 }
 
 .otp-error {
-  font-size: 13px;
+  font-size: 14px;
   color: #f87171;
   text-align: center;
-  margin-top: 10px;
-  margin-bottom: 6px;
-  padding: 10px 14px;
+  margin-top: 12px;
+  margin-bottom: 8px;
+  padding: 12px 16px;
   background: rgba(248, 113, 113, 0.1);
   border-radius: 10px;
   border: 1px solid rgba(248, 113, 113, 0.3);
@@ -470,11 +470,11 @@
   text-align: center;
   margin-top: 12px;
   margin-bottom: 8px;
-  padding: 14px 18px;
+  padding: 12px 16px;
   background: rgba(16, 185, 129, 0.1);
-  border-radius: 12px;
+  border-radius: 10px;
   border: 1px solid rgba(16, 185, 129, 0.3);
-  line-height: 1.6;
+  line-height: 1.5;
   flex-shrink: 0;
   font-family: 'Inter', sans-serif;
   font-weight: 500;
@@ -493,19 +493,19 @@
 .animated-auth .info-content.Login{ 
   right: 0; 
   text-align: right; 
-  padding: 0 40px 60px 150px; 
+  padding: 0 35px 50px 120px; 
 }
 .animated-auth .info-content.Register{ 
   left: 0; 
   text-align: left; 
-  padding: 0 80px 60px 40px; 
+  padding: 0 70px 50px 35px; 
   pointer-events: none; 
   overflow: visible;
 }
 .animated-auth .info-content h2{ 
-  font-size: 36px; 
+  font-size: 34px; 
   line-height: 1.2; 
-  margin-bottom: 24px; 
+  margin-bottom: 22px; 
   font-weight: 900;
   letter-spacing: 0.02em;
   color: #fff;
@@ -518,8 +518,8 @@
   overflow-wrap: break-word;
 }
 .animated-auth .info-content p{ 
-  font-size: 17px; 
-  line-height: 1.55; 
+  font-size: 20px; 
+  line-height: 1.6; 
   color: #A8C7FF;
   font-weight: 500;
   font-family: 'Poppins', sans-serif;
@@ -527,6 +527,8 @@
   text-shadow: 0 2px 8px rgba(168, 199, 255, 0.3);
   padding: 0;
   margin: 0;
+  text-align: right;
+  margin-left: 20px;
 }
 
 .animated-auth .form-box.Login .animation{ transform: translateX(0%); transition: .7s; opacity: 1; transition-delay: calc(.1s * var(--S)); }

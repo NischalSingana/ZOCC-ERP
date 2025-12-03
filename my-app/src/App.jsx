@@ -13,7 +13,7 @@ import Profile from './pages/Profile.jsx';
 import Sessions from './pages/Sessions.jsx';
 import Attendance from './pages/Attendance.jsx';
 import Submissions from './pages/Submissions.jsx';
-import Projects from './pages/Projects.jsx';
+import Tasks from './pages/Tasks.jsx';
 import Announcements from './pages/Announcements.jsx';
 import Queries from './pages/Queries.jsx';
 import Contact from './pages/Contact.jsx';
@@ -24,9 +24,8 @@ import RegisteredStudents from './pages/admin/RegisteredStudents.jsx';
 import AttendanceAdmin from './pages/admin/Attendance.jsx';
 import SessionManagement from './pages/admin/SessionManagement.jsx';
 import SubmissionsApproval from './pages/admin/SubmissionsApproval.jsx';
-import ProjectSubmissionsApproval from './pages/admin/ProjectSubmissionsApproval.jsx';
 import AnnouncementsAdmin from './pages/admin/Announcements.jsx';
-import ProjectAdmin from './pages/admin/ProjectAdmin.jsx';
+import TaskAdmin from './pages/admin/TaskAdmin.jsx';
 import AdminQueries from './pages/admin/Queries.jsx';
 
 function App() {
@@ -99,11 +98,11 @@ function App() {
           }
         />
         <Route
-          path="/dashboard/projects"
+          path="/dashboard/tasks"
           element={
             <ProtectedRoute>
               <DashboardLayout>
-                <Projects />
+                <Tasks />
               </DashboardLayout>
             </ProtectedRoute>
           }
@@ -201,16 +200,6 @@ function App() {
           }
         />
         <Route
-          path="/dashboard/admin/project-submissions"
-          element={
-            <ProtectedRoute requiredRole="ADMIN">
-              <DashboardLayout>
-                <ProjectSubmissionsApproval />
-              </DashboardLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
           path="/dashboard/admin/announcements"
           element={
             <ProtectedRoute requiredRole="ADMIN">
@@ -221,11 +210,11 @@ function App() {
           }
         />
         <Route
-          path="/dashboard/admin/projects"
+          path="/dashboard/admin/tasks"
           element={
             <ProtectedRoute requiredRole="ADMIN">
               <DashboardLayout>
-                <ProjectAdmin />
+                <TaskAdmin />
               </DashboardLayout>
             </ProtectedRoute>
           }

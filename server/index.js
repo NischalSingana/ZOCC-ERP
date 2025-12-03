@@ -15,8 +15,7 @@ import Session from './models/Session.js';
 import Submission from './models/Submission.js';
 import Attendance from './models/Attendance.js';
 import Announcement from './models/Announcement.js';
-import Project from './models/Project.js';
-import ProjectSubmission from './models/ProjectSubmission.js';
+import Task from './models/Task.js';
 import Query from './models/Query.js';
 
 dotenv.config();
@@ -411,7 +410,7 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     if (!user) {
-      return res.status(401).json({ error: 'Invalid email or password' });
+      return res.status(401).json({ error: 'No account found with this email. Please sign up first.' });
     }
 
     if (!user.password) {
@@ -420,7 +419,7 @@ app.post('/api/auth/login', async (req, res) => {
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      return res.status(401).json({ error: 'Invalid email or password' });
+      return res.status(401).json({ error: 'Incorrect password. Please try again or reset your password.' });
     }
 
     if (isAdminEmail && user.role !== 'ADMIN') {
@@ -811,12 +810,19 @@ const handleMulterError = (err, req, res, next) => {
       return res.status(400).json({ error: 'File size exceeds 5MB limit' });
     }
     if (err.code === 'LIMIT_FILE_COUNT') {
-      return res.status(400).json({ error: 'Only one file is allowed' });
+      return res.status(400).json({ error: 'Maximum 3 files allowed per task' });
     }
+    console.error('Multer error:', err);
     return res.status(400).json({ error: `Upload error: ${err.message}` });
   }
   if (err) {
-    return res.status(400).json({ error: err.message || 'File upload error' });
+    // Handle file filter errors and other upload errors
+    console.error('Upload error:', err.message);
+    console.error('Error stack:', err.stack);
+    return res.status(400).json({ 
+      error: err.message || 'File upload error',
+      details: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
   }
   next();
 };
@@ -1136,7 +1142,7 @@ app.get('/api/files/:filePath(*)', async (req, res) => {
     const filePath = decodeURIComponent(req.params.filePath);
     console.log('Proxy requesting file:', filePath); // Debug log
 
-    if (!filePath || (!filePath.startsWith('submissions/') && !filePath.startsWith('project-submissions/') && !filePath.startsWith('reference-files/'))) {
+    if (!filePath || (!filePath.startsWith('submissions/') && !filePath.startsWith('project-submissions/') && !filePath.startsWith('reference-files/') && !filePath.startsWith('task-attachments/'))) {
       return res.status(403).json({ error: 'Access denied' });
     }
 
@@ -1146,9 +1152,9 @@ app.get('/api/files/:filePath(*)', async (req, res) => {
     let isAdmin = false;
     let userId = null;
 
-    // Reference files are accessible to all authenticated users
+    // Task attachments and reference files are accessible to all authenticated users
     // Other files require proper authentication
-    if (filePath.startsWith('reference-files/')) {
+    if (filePath.startsWith('task-attachments/') || filePath.startsWith('reference-files/')) {
       // For reference files, require authentication but allow all authenticated users
       if (!authHeader) {
         return res.status(401).json({ error: 'Authentication required' });
@@ -1626,41 +1632,100 @@ app.delete('/api/announcements/:id', authenticateToken, requireAdmin, async (req
   }
 });
 
-// ========== PROJECT ROUTES ==========
+// ========== TASK ROUTES ==========
 
-// Get all projects (students see active only, admin sees all)
-app.get('/api/projects', authenticateToken, async (req, res) => {
+// Get all tasks (students see active only, admin sees all)
+app.get('/api/tasks', authenticateToken, async (req, res) => {
   try {
     const user = await User.findById(req.userId);
     const isAdmin = user && user.role?.toUpperCase() === 'ADMIN';
 
     let query = {};
-    // If not admin, only return active projects
+    // If not admin, only return active tasks
     if (!isAdmin) {
       query.isActive = true;
     }
 
-    const projects = await Project.find(query)
+    const tasks = await Task.find(query)
       .populate({ path: 'createdBy', select: 'studentFullName email name', model: 'User' })
       .sort({ createdAt: -1 })
       .lean();
 
-    res.json({ success: true, projects });
+    res.json({ success: true, tasks });
   } catch (error) {
-    console.error('Error fetching projects:', error);
+    console.error('Error fetching tasks:', error);
     console.error('Error details:', error.message);
     res.status(500).json({
-      error: 'Failed to fetch projects',
+      error: 'Failed to fetch tasks',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
 
-// Upload reference files for projects (admin only)
-app.post('/api/projects/reference-files', authenticateToken, requireAdmin, upload.array('files', 10), handleMulterError, async (req, res) => {
+// Upload attachments for tasks (admin only)
+// Multer config for task attachments (max 3 files, 5MB each)
+const taskAttachmentsUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB per file
+    files: 3 // Max 3 files
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedMimeTypes = [
+      'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/zip',
+      'application/x-zip-compressed',
+      'text/plain'
+    ];
+    
+    // Get file extension as fallback
+    const fileExtension = file.originalname.split('.').pop().toLowerCase();
+    const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'pdf', 'doc', 'docx', 'zip', 'txt'];
+    
+    console.log(`📋 Checking file: ${file.originalname}, MIME: ${file.mimetype}, Extension: ${fileExtension}`);
+    
+    // Normalize MIME type (handle variations)
+    const normalizedMimeType = file.mimetype.toLowerCase().trim();
+    
+    // Check MIME type first (with normalization)
+    if (allowedMimeTypes.some(mime => mime.toLowerCase() === normalizedMimeType)) {
+      console.log(`✅ File accepted by MIME type: ${file.originalname}`);
+      return cb(null, true);
+    }
+    
+    // Fallback: Check file extension (useful when MIME type is incorrect or missing)
+    if (allowedExtensions.includes(fileExtension)) {
+      console.log(`⚠️ MIME type "${file.mimetype}" not in allowed list, but extension "${fileExtension}" is allowed. Accepting file: ${file.originalname}`);
+      return cb(null, true);
+    }
+    
+    // If neither MIME type nor extension matches, reject
+    console.error(`❌ File rejected: ${file.originalname}, MIME: ${file.mimetype}, Extension: ${fileExtension}`);
+    cb(new Error(`File type "${file.mimetype}" (${fileExtension}) is not allowed. Only images, PDFs, Word documents, ZIP files, and text files are allowed`), false);
+  }
+});
+
+app.post('/api/tasks/attachments', authenticateToken, requireAdmin, taskAttachmentsUpload.array('files', 3), handleMulterError, async (req, res) => {
   try {
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ error: 'No files provided' });
+    }
+    
+    // Validate file count (max 3)
+    if (req.files.length > 3) {
+      return res.status(400).json({ error: 'Maximum 3 files allowed per task' });
+    }
+    
+    // Validate each file size (max 5MB)
+    for (const file of req.files) {
+      if (file.size > 5 * 1024 * 1024) {
+        return res.status(400).json({ 
+          error: `File "${file.originalname}" exceeds 5MB limit. Size: ${(file.size / 1024 / 1024).toFixed(2)}MB` 
+        });
+      }
     }
 
     if (!r2Client || !R2_BUCKET_NAME) {
@@ -1674,7 +1739,7 @@ app.post('/api/projects/reference-files', authenticateToken, requireAdmin, uploa
 
     for (const file of req.files) {
       const fileExtension = file.originalname.split('.').pop().toLowerCase();
-      const uniqueFileName = `reference-files/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
+      const uniqueFileName = `task-attachments/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
 
       // Determine ContentType from file extension if mimetype is not available
       let contentType = file.mimetype;
@@ -1703,10 +1768,10 @@ app.post('/api/projects/reference-files', authenticateToken, requireAdmin, uploa
         });
       }
 
-      console.log(`📤 Uploading reference file: ${file.originalname}`);
-      console.log(`   Size: ${file.buffer.length} bytes`);
-      console.log(`   ContentType: ${contentType}`);
-      console.log(`   R2 Key: ${uniqueFileName}`);
+        console.log(`📤 Uploading task attachment: ${file.originalname}`);
+        console.log(`   Size: ${file.buffer.length} bytes`);
+        console.log(`   ContentType: ${contentType}`);
+        console.log(`   R2 Key: ${uniqueFileName}`);
 
       try {
         await withTimeout(
@@ -1725,9 +1790,9 @@ app.post('/api/projects/reference-files', authenticateToken, requireAdmin, uploa
           'R2 upload timeout'
         );
         uploadedFiles.push(uniqueFileName);
-        console.log(`✅ Reference file uploaded successfully: ${uniqueFileName}`);
+        console.log(`✅ Task attachment uploaded successfully: ${uniqueFileName}`);
       } catch (r2Error) {
-        console.error(`❌ Failed to upload reference file ${file.originalname}:`, r2Error);
+        console.error(`❌ Failed to upload task attachment ${file.originalname}:`, r2Error);
         console.error(`   Error name: ${r2Error.name}`);
         console.error(`   Error message: ${r2Error.message}`);
         return res.status(500).json({
@@ -1739,91 +1804,93 @@ app.post('/api/projects/reference-files', authenticateToken, requireAdmin, uploa
 
     res.status(201).json({
       success: true,
-      message: 'Reference files uploaded successfully',
+      message: 'Task attachments uploaded successfully',
       files: uploadedFiles
     });
   } catch (error) {
-    console.error('Error uploading reference files:', error);
+    console.error('Error uploading task attachments:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({
-      error: 'Failed to upload reference files',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      error: 'Failed to upload task attachments',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      message: error.message
     });
   }
 });
 
-// Create project (admin only)
-app.post('/api/projects', authenticateToken, requireAdmin, async (req, res) => {
+// Create task (admin only)
+app.post('/api/tasks', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const { title, description, isActive, referenceFiles } = req.body;
-    if (!title || !description) {
-      return res.status(400).json({ error: 'Title and description are required' });
+    const { title, content, isActive, attachments } = req.body;
+    if (!title || !content) {
+      return res.status(400).json({ error: 'Title and content are required' });
     }
 
-    // Ensure referenceFiles is an array of strings (R2 paths)
+    // Ensure attachments is an array of strings (R2 paths)
     let filesArray = [];
-    if (Array.isArray(referenceFiles)) {
-      filesArray = referenceFiles
+    if (Array.isArray(attachments)) {
+      filesArray = attachments
         .map(file => {
           if (typeof file === 'string') return file.trim();
           return null;
         })
-        .filter(file => file && file.length > 0 && file.startsWith('reference-files/'));
+        .filter(file => file && file.length > 0 && file.startsWith('task-attachments/'));
     }
 
-    const project = await Project.create({
+    const task = await Task.create({
       title: title.trim(),
-      description: description.trim(),
+      content: content.trim(),
       isActive: isActive !== undefined ? isActive : true,
-      referenceFiles: filesArray,
+      attachments: filesArray,
       createdBy: req.userId
     });
 
-    res.status(201).json({ success: true, message: 'Project created successfully', project });
+    res.status(201).json({ success: true, message: 'Task created successfully', task });
   } catch (error) {
-    console.error('Error creating project:', error);
+    console.error('Error creating task:', error);
     console.error('Error details:', error.message);
     console.error('Error stack:', error.stack);
     res.status(500).json({
-      error: 'Failed to create project',
+      error: 'Failed to create task',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
 
-// Update project (admin only)
-app.put('/api/projects/:id', authenticateToken, requireAdmin, async (req, res) => {
+// Update task (admin only)
+app.put('/api/tasks/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const { title, description, isActive, referenceFiles } = req.body;
-    const project = await Project.findById(req.params.id);
+    const { title, content, isActive, attachments } = req.body;
+    const task = await Task.findById(req.params.id);
 
-    if (!project) {
-      return res.status(404).json({ error: 'Project not found' });
+    if (!task) {
+      return res.status(404).json({ error: 'Task not found' });
     }
 
-    if (title) project.title = title;
-    if (description) project.description = description;
-    if (isActive !== undefined) project.isActive = isActive;
-    if (referenceFiles !== undefined) project.referenceFiles = referenceFiles;
+    if (title) task.title = title.trim();
+    if (content) task.content = content.trim();
+    if (isActive !== undefined) task.isActive = isActive;
+    if (attachments !== undefined) task.attachments = attachments;
 
-    await project.save();
-    res.json({ success: true, message: 'Project updated successfully', project });
+    await task.save();
+    res.json({ success: true, message: 'Task updated successfully', task });
   } catch (error) {
-    console.error('Error updating project:', error);
-    res.status(500).json({ error: 'Failed to update project' });
+    console.error('Error updating task:', error);
+    res.status(500).json({ error: 'Failed to update task' });
   }
 });
 
-// Delete project (admin only)
-app.delete('/api/projects/:id', authenticateToken, requireAdmin, async (req, res) => {
+// Delete task (admin only)
+app.delete('/api/tasks/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const project = await Project.findByIdAndDelete(req.params.id);
-    if (!project) {
-      return res.status(404).json({ error: 'Project not found' });
+    const task = await Task.findByIdAndDelete(req.params.id);
+    if (!task) {
+      return res.status(404).json({ error: 'Task not found' });
     }
-    res.json({ success: true, message: 'Project deleted successfully' });
+    res.json({ success: true, message: 'Task deleted successfully' });
   } catch (error) {
-    console.error('Error deleting project:', error);
-    res.status(500).json({ error: 'Failed to delete project' });
+    console.error('Error deleting task:', error);
+    res.status(500).json({ error: 'Failed to delete task' });
   }
 });
 

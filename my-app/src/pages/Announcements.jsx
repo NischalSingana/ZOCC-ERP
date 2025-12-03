@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axiosInstance from '../api/axiosConfig';
-import toast from 'react-hot-toast';
+import { showToast } from '../utils/toastUtils';
 import { Megaphone, Calendar, User as UserIcon } from 'lucide-react';
 
 const Announcements = () => {
@@ -22,7 +22,7 @@ const Announcements = () => {
       }
     } catch (error) {
       console.error('Error fetching announcements:', error);
-      toast.error('Failed to load announcements');
+      showToast.error('Failed to load announcements');
     } finally {
       setLoading(false);
     }

@@ -1,9 +1,10 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, Shield } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import './Login.css'
 import Captcha from './Captcha.jsx'
+import Toast from './Toast.jsx'
 import { API_URL } from '../utils/apiUrl'
 
 // Helper function to fetch with timeout
@@ -25,6 +26,39 @@ const fetchWithTimeout = async (url, options = {}, timeout = 30000) => {
     }
     throw error
   }
+}
+
+// Helper function to calculate password strength
+const calculatePasswordStrength = (password) => {
+  let strength = 0
+  if (!password) return 0
+  
+  // Length check
+  if (password.length >= 6) strength += 25
+  if (password.length >= 10) strength += 25
+  
+  // Character variety checks
+  if (/[a-z]/.test(password)) strength += 12.5
+  if (/[A-Z]/.test(password)) strength += 12.5
+  if (/[0-9]/.test(password)) strength += 12.5
+  if (/[^a-zA-Z0-9]/.test(password)) strength += 12.5
+  
+  return Math.min(100, strength)
+}
+
+// Helper function to get password strength color
+const getPasswordStrengthColor = (strength) => {
+  if (strength < 40) return '#f87171' // red
+  if (strength < 70) return '#fbbf24' // yellow
+  return '#10b981' // green
+}
+
+// Helper function to get password strength label
+const getPasswordStrengthLabel = (strength) => {
+  if (strength === 0) return ''
+  if (strength < 40) return 'Weak'
+  if (strength < 70) return 'Medium'
+  return 'Strong'
 }
 
 export default function Login() {
@@ -54,6 +88,36 @@ export default function Login() {
   const [otpError, setOtpError] = useState('')
   const [registerLoading, setRegisterLoading] = useState(false)
   const [registerError, setRegisterError] = useState('')
+  const [otpResendTimer, setOtpResendTimer] = useState(0)
+  const [passwordStrength, setPasswordStrength] = useState(0)
+  const [toasts, setToasts] = useState([])
+
+  // Toast notification helper
+  const showToast = (message, type = 'success') => {
+    const id = Date.now()
+    setToasts(prev => [...prev, { id, message, type }])
+  }
+
+  const removeToast = (id) => {
+    setToasts(prev => prev.filter(toast => toast.id !== id))
+  }
+
+  // OTP Resend Timer Effect
+  useEffect(() => {
+    if (otpResendTimer > 0) {
+      const timer = setTimeout(() => setOtpResendTimer(otpResendTimer - 1), 1000)
+      return () => clearTimeout(timer)
+    }
+  }, [otpResendTimer])
+
+  // Password strength calculator
+  useEffect(() => {
+    if (regPass) {
+      setPasswordStrength(calculatePasswordStrength(regPass))
+    } else {
+      setPasswordStrength(0)
+    }
+  }, [regPass])
 
   // Forgot password states
   const [showForgotPassword, setShowForgotPassword] = useState(false)
@@ -70,9 +134,22 @@ export default function Login() {
   const [forgotPasswordError, setForgotPasswordError] = useState('')
 
   return (
-    <div className={`animated-auth ${active ? 'active' : ''} ${isAdminMode ? 'admin-mode' : ''}`}>
-      {/* Admin Icon Button - Bottom Right (near SAC logo area) */}
-      <button
+    <>
+      {/* Toast Notifications */}
+      <div className="toast-container">
+        {toasts.map(toast => (
+          <Toast
+            key={toast.id}
+            message={toast.message}
+            type={toast.type}
+            onClose={() => removeToast(toast.id)}
+          />
+        ))}
+      </div>
+
+      <div className={`animated-auth ${active ? 'active' : ''} ${isAdminMode ? 'admin-mode' : ''}`}>
+        {/* Admin Icon Button - Bottom Right (near SAC logo area) */}
+        <button
         onClick={() => {
           setIsAdminMode(!isAdminMode)
           setActive(false) // Close registration if open
@@ -146,11 +223,30 @@ export default function Login() {
                   
                   navigate('/dashboard')
                 } else {
-                  setLoginError(result.error || 'Login failed. Please check your credentials.')
+                  // Provide specific error messages
+                  const errorMsg = result.error || 'Login failed'
+                  if (errorMsg.toLowerCase().includes('user not found') || errorMsg.toLowerCase().includes('no user')) {
+                    setLoginError('No account found with this email. Please sign up first.')
+                  } else if (errorMsg.toLowerCase().includes('password') || errorMsg.toLowerCase().includes('incorrect')) {
+                    setLoginError('Incorrect password. Please try again or reset your password.')
+                  } else if (errorMsg.toLowerCase().includes('verified') || errorMsg.toLowerCase().includes('verify')) {
+                    setLoginError('Please verify your email address before logging in.')
+                  } else if (errorMsg.toLowerCase().includes('banned') || errorMsg.toLowerCase().includes('suspended')) {
+                    setLoginError('Your account has been suspended. Please contact support.')
+                  } else {
+                    setLoginError(errorMsg)
+                  }
                 }
               } catch (err) {
                 console.error('Login error:', err)
-                setLoginError(err.message || 'Login failed. Please check your credentials.')
+                // Handle different types of errors
+                if (err.message.includes('timeout') || err.message.includes('Timeout')) {
+                  setLoginError('Connection timeout. Please check your internet connection and try again.')
+                } else if (err.message.includes('fetch') || err.message.includes('Network')) {
+                  setLoginError('Unable to connect to server. Please try again later.')
+                } else {
+                  setLoginError(err.message || 'An unexpected error occurred. Please try again.')
+                }
               } finally {
                 setLoginLoading(false)
               }
@@ -164,9 +260,13 @@ export default function Login() {
                 name="email"
                 id="login-email"
                 autoComplete="username"
+                autoFocus
                 required 
                 value={loginEmail} 
-                onChange={e => setLoginEmail(e.target.value)} 
+                onChange={e => setLoginEmail(e.target.value)}
+                aria-label="Email address"
+                aria-required="true"
+                aria-invalid={loginError ? "true" : "false"}
               />
               <label htmlFor="login-email">Email</label>
               <box-icon name='envelope' type='solid' color="gray"></box-icon>
@@ -182,6 +282,9 @@ export default function Login() {
                 value={loginPass}
                 onChange={e => setLoginPass(e.target.value)}
                 key={`login-pass-${showLoginPass}`}
+                aria-label="Password"
+                aria-required="true"
+                aria-invalid={loginError ? "true" : "false"}
               />
               <label htmlFor="login-password">Password</label>
               <box-icon name='lock-alt' type='solid' color="gray"></box-icon>
@@ -189,7 +292,8 @@ export default function Login() {
                 type="button"
                 className="password-toggle"
                 onClick={() => setShowLoginPass(!showLoginPass)}
-                tabIndex={-1}
+                tabIndex={0}
+                aria-label={showLoginPass ? "Hide password" : "Show password"}
               >
                 {showLoginPass ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
@@ -218,8 +322,15 @@ export default function Login() {
                 className="btn"
                 type="submit"
                 disabled={(!isAdminMode && !captchaVerified) || loginLoading || !loginEmail || !loginPass}
+                aria-label="Login to your account"
+                aria-busy={loginLoading}
               >
-                {loginLoading ? 'Logging in...' : 'Login'}
+                {loginLoading ? (
+                  <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                    <span className="loading-spinner"></span>
+                    Logging in...
+                  </span>
+                ) : 'Login'}
               </button>
             </div>
 
@@ -331,21 +442,39 @@ export default function Login() {
 
                         await res.json()
                         setOtpSent(true)
+                        setOtpResendTimer(60)
                         setOtpError('')
+                        toast.success('OTP sent to your email! Please check your inbox.')
                       } catch (err) {
-                        if (err.name === 'TypeError' && err.message.includes('fetch')) {
-                          setOtpError(`Connection failed. Is the server running on ${API_URL}?`)
-                        } else {
-                          setOtpError(err.message || 'Failed to send OTP')
-                        }
                         console.error('OTP request error:', err)
+                        if (err.name === 'TypeError' && err.message.includes('fetch')) {
+                          setOtpError('Unable to connect to server. Please check your internet connection.')
+                        } else if (err.message.includes('timeout')) {
+                          setOtpError('Connection timeout. Please try again.')
+                        } else if (err.message.toLowerCase().includes('email') || err.message.toLowerCase().includes('invalid')) {
+                          setOtpError('Invalid email address. Please check your ID number.')
+                        } else if (err.message.toLowerCase().includes('rate limit') || err.message.toLowerCase().includes('too many')) {
+                          setOtpError('Too many attempts. Please wait a few minutes before trying again.')
+                        } else {
+                          setOtpError(err.message || 'Failed to send OTP. Please try again.')
+                        }
                       } finally {
                         setOtpLoading(false)
                       }
                     }}
-                    disabled={otpLoading || otpSent}
+                    disabled={otpLoading || (otpSent && otpResendTimer > 0)}
+                    aria-label="Send OTP to verify email"
                   >
-                    {otpLoading ? 'Sending...' : otpSent ? '✓ OTP Sent' : 'Verify Email'}
+                    {otpLoading ? (
+                      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                        <span className="loading-spinner"></span>
+                        Sending...
+                      </span>
+                    ) : otpSent && otpResendTimer > 0 ? 
+                      `Resend in ${otpResendTimer}s` : 
+                      otpSent ? 
+                      'Resend OTP' : 
+                      'Verify Email'}
                   </button>
                 </div>
               )}
@@ -389,17 +518,24 @@ export default function Login() {
                             throw new Error(`Server error: ${res.status}`)
                           }
 
-                          await res.json()
-                          setEmailVerified(true)
-                          setOtpError('')
+                        await res.json()
+                        setEmailVerified(true)
+                        setOtpError('')
+                        toast.success('Email verified successfully!')
                         } catch (err) {
+                          console.error('OTP verify error:', err)
                           if (err.name === 'TypeError' && err.message.includes('fetch')) {
-                            setOtpError(`Connection failed. Is the server running on ${API_URL}?`)
+                            setOtpError('Unable to connect to server. Please check your internet connection.')
+                          } else if (err.message.includes('timeout')) {
+                            setOtpError('Connection timeout. Please try again.')
+                          } else if (err.message.toLowerCase().includes('invalid') || err.message.toLowerCase().includes('incorrect')) {
+                            setOtpError('Incorrect OTP. Please check the code and try again.')
+                          } else if (err.message.toLowerCase().includes('expired')) {
+                            setOtpError('OTP has expired. Please request a new one.')
                           } else {
-                            setOtpError(err.message || 'OTP verification failed')
+                            setOtpError(err.message || 'OTP verification failed. Please try again.')
                           }
                           setOtp('')
-                          console.error('OTP verify error:', err)
                         } finally {
                           setOtpLoading(false)
                         }
@@ -433,6 +569,9 @@ export default function Login() {
                   value={regPass}
                   onChange={e => setRegPass(e.target.value)}
                   key={`reg-pass-${showRegPass}`}
+                  aria-label="New password"
+                  aria-required="true"
+                  aria-describedby="password-requirements"
                 />
                 <label>Password</label>
                 <box-icon name='lock-alt' type='solid' color="gray"></box-icon>
@@ -440,11 +579,35 @@ export default function Login() {
                   type="button"
                   className="password-toggle"
                   onClick={() => setShowRegPass(!showRegPass)}
-                  tabIndex={-1}
+                  tabIndex={0}
+                  aria-label={showRegPass ? "Hide password" : "Show password"}
                 >
                   {showRegPass ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
+
+              {regPass && (
+                <div className="password-strength-container animation" style={{ ['--li']: 20.1, ['--S']: 3.1 }}>
+                  <div className="password-strength-bar">
+                    <div 
+                      className="password-strength-fill" 
+                      style={{ 
+                        width: `${passwordStrength}%`,
+                        backgroundColor: getPasswordStrengthColor(passwordStrength)
+                      }}
+                    ></div>
+                  </div>
+                  <div 
+                    className="password-strength-label" 
+                    style={{ color: getPasswordStrengthColor(passwordStrength) }}
+                  >
+                    {getPasswordStrengthLabel(passwordStrength)}
+                  </div>
+                  <div id="password-requirements" className="password-requirements">
+                    Password must be at least 6 characters long
+                  </div>
+                </div>
+              )}
 
               <div className="input-box animation" style={{ ['--li']: 20.2, ['--S']: 3.2 }} data-password-visible={showConfirmPass}>
                 <input
@@ -455,6 +618,9 @@ export default function Login() {
                   value={confirmPass}
                   onChange={e => setConfirmPass(e.target.value)}
                   key={`confirm-pass-${showConfirmPass}`}
+                  aria-label="Confirm password"
+                  aria-required="true"
+                  aria-invalid={confirmPass && regPass !== confirmPass ? "true" : "false"}
                 />
                 <label>Confirm Password</label>
                 <box-icon name='lock-alt' type='solid' color="gray"></box-icon>
@@ -462,7 +628,8 @@ export default function Login() {
                   type="button"
                   className="password-toggle"
                   onClick={() => setShowConfirmPass(!showConfirmPass)}
-                  tabIndex={-1}
+                  tabIndex={0}
+                  aria-label={showConfirmPass ? "Hide password" : "Show password"}
                 >
                   {showConfirmPass ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -479,20 +646,32 @@ export default function Login() {
                   className="btn"
                   type="submit"
                   disabled={!emailVerified || registerLoading || !studentFullName || !idNumber || !regPass || !confirmPass}
+                  aria-label="Register new account"
+                  aria-busy={registerLoading}
                   onClick={async (e) => {
                     e.preventDefault()
-                    if (!emailVerified || !studentFullName || !idNumber || !regEmail || !regPass || !confirmPass) {
-                      setRegisterError('Please fill all fields and verify email')
+                    if (!emailVerified) {
+                      setRegisterError('Please verify your email address first by entering the OTP')
+                      return
+                    }
+
+                    if (!studentFullName || studentFullName.trim().length < 3) {
+                      setRegisterError('Please enter your full name (at least 3 characters)')
+                      return
+                    }
+
+                    if (!idNumber || idNumber.length !== 10) {
+                      setRegisterError('Please enter a valid 10-digit ID number')
+                      return
+                    }
+
+                    if (!regPass || regPass.length < 6) {
+                      setRegisterError('Password must be at least 6 characters long')
                       return
                     }
 
                     if (regPass !== confirmPass) {
-                      setRegisterError('Passwords do not match')
-                      return
-                    }
-
-                    if (regPass.length < 6) {
-                      setRegisterError('Password must be at least 6 characters')
+                      setRegisterError('Passwords do not match. Please check and try again.')
                       return
                     }
 
@@ -539,18 +718,30 @@ export default function Login() {
                       setRegisterError('')
 
                     } catch (err) {
-                      if (err.name === 'TypeError' && err.message.includes('fetch')) {
-                        setRegisterError(`Connection failed. Is the server running on ${API_URL}?`)
-                      } else {
-                        setRegisterError(err.message || 'Registration failed')
-                      }
                       console.error('Registration error:', err)
+                      // Provide specific error messages
+                      if (err.name === 'TypeError' && err.message.includes('fetch')) {
+                        setRegisterError(`Unable to connect to server. Please check your internet connection.`)
+                      } else if (err.message.includes('timeout')) {
+                        setRegisterError('Connection timeout. Please try again.')
+                      } else if (err.message.toLowerCase().includes('already exists') || err.message.toLowerCase().includes('duplicate')) {
+                        setRegisterError('An account with this email or ID already exists. Please login instead.')
+                      } else if (err.message.toLowerCase().includes('email')) {
+                        setRegisterError('Invalid email address. Please check and try again.')
+                      } else {
+                        setRegisterError(err.message || 'Registration failed. Please try again later.')
+                      }
                     } finally {
                       setRegisterLoading(false)
                     }
                   }}
                 >
-                  {registerLoading ? 'Registering...' : 'Register'}
+                  {registerLoading ? (
+                    <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                      <span className="loading-spinner"></span>
+                      Registering...
+                    </span>
+                  ) : 'Register'}
                 </button>
               </div>
 
@@ -864,7 +1055,8 @@ export default function Login() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   )
 }
 

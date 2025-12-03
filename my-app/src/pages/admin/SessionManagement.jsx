@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import axiosInstance from '../../api/axiosConfig';
 import Table from '../../components/Table';
-import toast from 'react-hot-toast';
+import { showToast } from '../../utils/toastUtils';
 import { Plus, Edit, Trash2, Calendar, Clock } from 'lucide-react';
 
 const SessionManagement = () => {
@@ -34,7 +34,7 @@ const SessionManagement = () => {
       }
     } catch (error) {
       console.error('Error fetching sessions:', error);
-      toast.error('Failed to load sessions');
+      showToast.error('Failed to load sessions');
     } finally {
       setLoading(false);
     }
@@ -57,7 +57,7 @@ const SessionManagement = () => {
       });
 
       if (response.data?.success) {
-        toast.success(editingSession ? 'Session updated!' : 'Session created!');
+        showToast.success(editingSession ? 'Session updated!' : 'Session created!');
         setShowForm(false);
         setEditingSession(null);
         setFormData({
@@ -75,13 +75,13 @@ const SessionManagement = () => {
       }
     } catch (error) {
       console.error('Error saving session:', error);
-      toast.error('Failed to save session');
+      showToast.error('Failed to save session');
     }
   };
 
   const handleDelete = async (sessionId) => {
     if (!sessionId) {
-      toast.error('Invalid session ID');
+      showToast.error('Invalid session ID');
       return;
     }
     
@@ -90,11 +90,11 @@ const SessionManagement = () => {
     try {
       const idString = sessionId?.toString() || sessionId;
       await axiosInstance.delete(`/api/sessions/${idString}`);
-      toast.success('Session deleted!');
+      showToast.success('Session deleted!');
       fetchSessions();
     } catch (error) {
       console.error('Error deleting session:', error);
-      toast.error(error.response?.data?.error || 'Failed to delete session');
+      showToast.error(error.response?.data?.error || 'Failed to delete session');
     }
   };
 

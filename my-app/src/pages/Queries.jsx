@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axiosInstance from '../api/axiosConfig';
-import toast from 'react-hot-toast';
+import { showToast } from '../utils/toastUtils';
 import { MessageSquare, Send, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 
 const Queries = () => {
@@ -25,7 +25,7 @@ const Queries = () => {
       }
     } catch (error) {
       console.error('Error fetching queries:', error);
-      toast.error('Failed to load queries');
+      showToast.error('Failed to load queries');
     } finally {
       setLoading(false);
     }
@@ -36,7 +36,7 @@ const Queries = () => {
     try {
       const response = await axiosInstance.post('/api/queries', formData);
       if (response.data?.success) {
-        toast.success('Query submitted successfully!');
+        showToast.success('Query submitted successfully!');
         setFormData({ subject: '', message: '' });
         setShowForm(false);
         fetchQueries();

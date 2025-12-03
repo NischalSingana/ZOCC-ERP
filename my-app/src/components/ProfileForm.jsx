@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Eye, EyeOff, Upload } from 'lucide-react';
 import FileUpload from './FileUpload';
 import axiosInstance from '../api/axiosConfig';
-import toast from 'react-hot-toast';
+import { showToast } from '../utils/toastUtils';
 import { useAuth } from '../context/AuthContext';
 
 const ProfileForm = ({ user, onUpdate }) => {
@@ -61,7 +61,7 @@ const ProfileForm = ({ user, onUpdate }) => {
 
       if (response.data?.user) {
         updateUser(response.data.user);
-        toast.success('Profile updated successfully!');
+        showToast.success('Profile updated successfully!');
         onUpdate?.(response.data.user);
       }
 
@@ -71,13 +71,13 @@ const ProfileForm = ({ user, onUpdate }) => {
         formDataPhoto.append('photo', photo);
         // Assuming you have a photo upload endpoint
         // await axiosInstance.post('/api/users/me/photo', formDataPhoto);
-        toast.success('Photo upload will be implemented soon');
+        showToast.success('Photo upload will be implemented soon');
       }
 
       // Update password if provided
       if (formData.newPassword) {
         if (formData.newPassword !== formData.confirmPassword) {
-          toast.error('New passwords do not match');
+          showToast.error('New passwords do not match');
           setLoading(false);
           return;
         }
@@ -86,7 +86,7 @@ const ProfileForm = ({ user, onUpdate }) => {
         //   currentPassword: formData.currentPassword,
         //   newPassword: formData.newPassword,
         // });
-        toast.success('Password update will be implemented soon');
+        showToast.success('Password update will be implemented soon');
       }
     } catch (error) {
       console.error('Error updating profile:', error);

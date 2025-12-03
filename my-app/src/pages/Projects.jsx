@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import axiosInstance from '../api/axiosConfig';
 import { API_URL } from '../utils/apiUrl';
-import toast from 'react-hot-toast';
+import { showToast } from '../utils/toastUtils';
 import { FolderKanban, Download, Upload, XCircle, FileText, Eye, Loader, ArrowLeft } from 'lucide-react';
 
 const Projects = () => {
@@ -28,7 +28,7 @@ const Projects = () => {
       }
     } catch (error) {
       console.error('Error fetching projects:', error);
-      toast.error('Failed to load projects');
+      showToast.error('Failed to load projects');
     } finally {
       setLoading(false);
     }
@@ -105,7 +105,7 @@ const Projects = () => {
       }
 
       if (!token) {
-        toast.error('Please log in to download files');
+        showToast.success('Please log in to download files');
         return;
       }
 
@@ -118,12 +118,12 @@ const Projects = () => {
 
       if (!response.ok) {
         if (response.status === 401) {
-          toast.error('Authentication failed. Please log in again.');
+          showToast.error('Authentication failed. Please log in again.');
           // Optionally redirect to login
           return;
         }
         if (response.status === 403) {
-          toast.error('Access denied. You do not have permission to access this file.');
+          showToast.error('Access denied. You do not have permission to access this file.');
           return;
         }
         const errorText = await response.text().catch(() => 'Unknown error');
@@ -239,10 +239,10 @@ const Projects = () => {
         window.URL.revokeObjectURL(url);
       }, 300);
       
-      toast.success('File downloaded successfully');
+      showToast.success('File downloaded successfully');
     } catch (error) {
       console.error('Error downloading file:', error);
-      toast.error(error.message || 'Failed to download file');
+      showToast.error(error.message || 'Failed to download file');
     }
   };
 
@@ -278,7 +278,7 @@ const Projects = () => {
         throw new Error(data.error || 'Upload failed');
       }
 
-      toast.success('Project submission uploaded successfully!');
+      showToast.success('Project submission uploaded successfully!');
       setJoinModalOpen(false);
       setSelectedProject(null);
       setSelectedFile(null);

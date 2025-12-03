@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import axiosInstance from '../../api/axiosConfig';
 import Table from '../../components/Table';
-import toast from 'react-hot-toast';
+import { showToast } from '../../utils/toastUtils';
 import { Plus, Edit, Trash2, Megaphone, Eye, EyeOff } from 'lucide-react';
 
 const AnnouncementsAdmin = () => {
@@ -28,7 +28,7 @@ const AnnouncementsAdmin = () => {
       }
     } catch (error) {
       console.error('Error fetching announcements:', error);
-      toast.error('Failed to load announcements');
+      showToast.error('Failed to load announcements');
     } finally {
       setLoading(false);
     }
@@ -46,7 +46,7 @@ const AnnouncementsAdmin = () => {
       const response = await axiosInstance[method](url, formData);
 
       if (response.data?.success) {
-        toast.success(
+        showToast.success(
           editingAnnouncement ? 'Announcement updated!' : 'Announcement created!'
         );
         setShowForm(false);
@@ -56,13 +56,13 @@ const AnnouncementsAdmin = () => {
       }
     } catch (error) {
       console.error('Error saving announcement:', error);
-      toast.error('Failed to save announcement');
+      showToast.error('Failed to save announcement');
     }
   };
 
   const handleDelete = async (announcementId) => {
     if (!announcementId) {
-      toast.error('Invalid announcement ID');
+      showToast.error('Invalid announcement ID');
       return;
     }
     
@@ -71,11 +71,11 @@ const AnnouncementsAdmin = () => {
     try {
       const idString = announcementId?.toString() || announcementId;
       await axiosInstance.delete(`/api/announcements/${idString}`);
-      toast.success('Announcement deleted!');
+      showToast.success('Announcement deleted!');
       fetchAnnouncements();
     } catch (error) {
       console.error('Error deleting announcement:', error);
-      toast.error(error.response?.data?.error || 'Failed to delete announcement');
+      showToast.error(error.response?.data?.error || 'Failed to delete announcement');
     }
   };
 
@@ -85,13 +85,13 @@ const AnnouncementsAdmin = () => {
       await axiosInstance.put(`/api/announcements/${announcementId}`, {
         published: !announcement.published,
       });
-      toast.success(
+      showToast.success(
         announcement.published ? 'Announcement unpublished!' : 'Announcement published!'
       );
       fetchAnnouncements();
     } catch (error) {
       console.error('Error toggling publish:', error);
-      toast.error('Failed to update announcement');
+      showToast.error('Failed to update announcement');
     }
   };
 

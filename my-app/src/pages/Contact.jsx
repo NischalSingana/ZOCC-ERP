@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Mail, Phone, MapPin, Send, CheckCircle } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { showToast } from '../utils/toastUtils';
 
 const Contact = () => {
   const [formData, setFormData] = useState({
@@ -20,7 +20,7 @@ const Contact = () => {
     setTimeout(() => {
       setLoading(false);
       setSubmitted(true);
-      toast.success('Message sent successfully!');
+      showToast.success('Message sent successfully!');
       setFormData({ name: '', email: '', subject: '', message: '' });
       setTimeout(() => setSubmitted(false), 3000);
     }, 1000);

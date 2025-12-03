@@ -43,4 +43,45 @@ body {
   }
 }
 
+/* React-hot-toast custom close button */
+.toast-close-btn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(148, 163, 184, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  color: #94a3b8;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  opacity: 0.7;
+  transition: all 0.2s ease;
+}
+
+.toast-close-btn:hover {
+  opacity: 1;
+  background: rgba(148, 163, 184, 0.2);
+  border-color: rgba(148, 163, 184, 0.3);
+  color: #cbd5e1;
+  transform: translateY(-50%) scale(1.05);
+}
+
+.toast-close-btn:active {
+  transform: translateY(-50%) scale(0.95);
+  background: rgba(148, 163, 184, 0.15);
+}
+
+[data-hot-toast] > div {
+  position: relative;
+  padding-right: 40px !important;
+}
+
 

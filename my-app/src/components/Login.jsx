@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, Shield } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -85,22 +85,9 @@ export default function Login() {
   const [otpSent, setOtpSent] = useState(false)
   const [otp, setOtp] = useState('')
   const [otpLoading, setOtpLoading] = useState(false)
-  const [otpError, setOtpError] = useState('')
   const [registerLoading, setRegisterLoading] = useState(false)
-  const [registerError, setRegisterError] = useState('')
   const [otpResendTimer, setOtpResendTimer] = useState(0)
   const [passwordStrength, setPasswordStrength] = useState(0)
-  const [toasts, setToasts] = useState([])
-
-  // Toast notification helper
-  const showToast = (message, type = 'success') => {
-    const id = Date.now()
-    setToasts(prev => [...prev, { id, message, type }])
-  }
-
-  const removeToast = (id) => {
-    setToasts(prev => prev.filter(toast => toast.id !== id))
-  }
 
   // OTP Resend Timer Effect
   useEffect(() => {
@@ -135,18 +122,6 @@ export default function Login() {
 
   return (
     <>
-      {/* Toast Notifications */}
-      <div className="toast-container">
-        {toasts.map(toast => (
-          <Toast
-            key={toast.id}
-            message={toast.message}
-            type={toast.type}
-            onClose={() => removeToast(toast.id)}
-          />
-        ))}
-      </div>
-
       <div className={`animated-auth ${active ? 'active' : ''} ${isAdminMode ? 'admin-mode' : ''}`}>
         {/* Admin Icon Button - Bottom Right (near SAC logo area) */}
         <button
@@ -188,7 +163,6 @@ export default function Login() {
               if ((!isAdminMode && !captchaVerified) || !loginEmail || !loginPass) return
 
               setLoginLoading(true)
-              setLoginError('')
 
               try {
                 const result = await login(loginEmail.toLowerCase().trim(), loginPass)
@@ -224,44 +198,61 @@ export default function Login() {
                   navigate('/dashboard')
                 } else {
                   // Provide specific error messages with toast notifications
-                  const errorMsg = result.error || 'Login failed'
-                  let toastMessage = ''
+                  const errorMsg = String(result.error || 'Login failed')
+                  let toastMessage = errorMsg // Default to server message
                   
-                  if (errorMsg.toLowerCase().includes('user not found') || errorMsg.toLowerCase().includes('no user') || errorMsg.toLowerCase().includes('invalid email')) {
-                    toastMessage = 'No account found with this email. Please sign up first.'
-                    setLoginError(toastMessage)
-                  } else if (errorMsg.toLowerCase().includes('password') || errorMsg.toLowerCase().includes('incorrect') || errorMsg.toLowerCase().includes('invalid')) {
+                  // Check for specific error patterns (order matters - most specific first)
+                  const lowerError = errorMsg.toLowerCase()
+                  if (lowerError.includes('incorrect password') || lowerError.includes('wrong password')) {
                     toastMessage = 'Incorrect password. Please try again or reset your password.'
-                    setLoginError(toastMessage)
-                  } else if (errorMsg.toLowerCase().includes('verified') || errorMsg.toLowerCase().includes('verify')) {
+                  } else if (lowerError.includes('no account found') || lowerError.includes('user not found') || lowerError.includes('sign up first')) {
+                    toastMessage = 'No account found with this email. Please sign up first.'
+                  } else if (lowerError.includes('verify') && lowerError.includes('email')) {
                     toastMessage = 'Please verify your email address before logging in.'
-                    setLoginError(toastMessage)
-                  } else if (errorMsg.toLowerCase().includes('banned') || errorMsg.toLowerCase().includes('suspended')) {
+                  } else if (lowerError.includes('banned') || lowerError.includes('suspended')) {
                     toastMessage = 'Your account has been suspended. Please contact support.'
-                    setLoginError(toastMessage)
-                  } else {
-                    toastMessage = errorMsg
-                    setLoginError(errorMsg)
+                  } else if (lowerError.includes('not fully set up')) {
+                    toastMessage = 'Account not fully set up. Please contact admin.'
                   }
                   
                   // Show toast notification for login errors
-                  if (toastMessage) {
-                    showToast.error(toastMessage)
+                  try {
+                    if (showToast && typeof showToast.error === 'function') {
+                      showToast.error(String(toastMessage))
+                    } else {
+                      console.error('Login error:', toastMessage)
+                      alert(toastMessage)
+                    }
+                  } catch (toastErr) {
+                    console.error('Error showing toast:', toastErr)
+                    console.error('Login error message:', toastMessage)
+                    alert(toastMessage)
                   }
                 }
               } catch (err) {
                 console.error('Login error:', err)
                 // Handle different types of errors with toast notifications
-                let errorMessage = ''
-                if (err.message.includes('timeout') || err.message.includes('Timeout')) {
+                let errorMessage = 'An unexpected error occurred. Please try again.'
+                const errMsg = String(err.message || '')
+                if (errMsg.includes('timeout') || errMsg.includes('Timeout')) {
                   errorMessage = 'Connection timeout. Please check your internet connection and try again.'
-                } else if (err.message.includes('fetch') || err.message.includes('Network')) {
+                } else if (errMsg.includes('fetch') || errMsg.includes('Network')) {
                   errorMessage = 'Unable to connect to server. Please try again later.'
-                } else {
-                  errorMessage = err.message || 'An unexpected error occurred. Please try again.'
+                } else if (errMsg && errMsg.length > 0) {
+                  errorMessage = errMsg
                 }
-                setLoginError(errorMessage)
-                showToast.error(errorMessage)
+                try {
+                  if (showToast && typeof showToast.error === 'function') {
+                    showToast.error(String(errorMessage))
+                  } else {
+                    console.error('Login error (fallback):', errorMessage)
+                    alert(errorMessage)
+                  }
+                } catch (toastErr) {
+                  console.error('Error showing toast:', toastErr)
+                  console.error('Login error message:', errorMessage)
+                  alert(errorMessage)
+                }
               } finally {
                 setLoginLoading(false)
               }
@@ -296,7 +287,6 @@ export default function Login() {
                 required
                 value={loginPass}
                 onChange={e => setLoginPass(e.target.value)}
-                key={`login-pass-${showLoginPass}`}
                 aria-label="Password"
                 aria-required="true"
                 aria-invalid={loginError ? "true" : "false"}
@@ -306,7 +296,20 @@ export default function Login() {
               <button
                 type="button"
                 className="password-toggle"
-                onClick={() => setShowLoginPass(!showLoginPass)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  const input = document.getElementById('login-password');
+                  if (input) {
+                    const cursorPosition = input.selectionStart;
+                    setShowLoginPass(!showLoginPass);
+                    setTimeout(() => {
+                      input.focus();
+                      input.setSelectionRange(cursorPosition, cursorPosition);
+                    }, 0);
+                  } else {
+                    setShowLoginPass(!showLoginPass);
+                  }
+                }}
                 tabIndex={0}
                 aria-label={showLoginPass ? "Hide password" : "Show password"}
               >
@@ -326,11 +329,6 @@ export default function Login() {
               </div>
             )}
 
-            {loginError && (
-              <div className="otp-error animation" style={{ ['--D']: isAdminMode ? 2.5 : 3.5, ['--S']: isAdminMode ? 23.5 : 24.5 }}>
-                {loginError}
-              </div>
-            )}
 
             <div className="input-box animation" style={{ ['--D']: isAdminMode ? 3 : 4, ['--S']: isAdminMode ? 24 : 25 }}>
               <button
@@ -404,7 +402,6 @@ export default function Login() {
                       setOtpSent(false)
                       setEmailVerified(false)
                       setOtp('')
-                      setOtpError('')
                     } else {
                       setRegEmail('')
                       setOtpSent(false)
@@ -438,11 +435,10 @@ export default function Login() {
                     className="btn-verify-email"
                     onClick={async () => {
                       if (!regEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(regEmail)) {
-                        setOtpError('Please enter a valid ID number')
+                        showToast.error('Please enter a valid ID number')
                         return
                       }
                       setOtpLoading(true)
-                      setOtpError('')
                       try {
                         const res = await fetchWithTimeout(`${API_URL}/api/auth/request-otp`, {
                           method: 'POST',
@@ -458,21 +454,22 @@ export default function Login() {
                         await res.json()
                         setOtpSent(true)
                         setOtpResendTimer(60)
-                        setOtpError('')
-                        toast.success('OTP sent to your email! Please check your inbox.')
+                        showToast.success('OTP sent to your email! Please check your inbox.')
                       } catch (err) {
                         console.error('OTP request error:', err)
+                        let errorMsg = ''
                         if (err.name === 'TypeError' && err.message.includes('fetch')) {
-                          setOtpError('Unable to connect to server. Please check your internet connection.')
+                          errorMsg = 'Unable to connect to server. Please check your internet connection.'
                         } else if (err.message.includes('timeout')) {
-                          setOtpError('Connection timeout. Please try again.')
+                          errorMsg = 'Connection timeout. Please try again.'
                         } else if (err.message.toLowerCase().includes('email') || err.message.toLowerCase().includes('invalid')) {
-                          setOtpError('Invalid email address. Please check your ID number.')
+                          errorMsg = 'Invalid email address. Please check your ID number.'
                         } else if (err.message.toLowerCase().includes('rate limit') || err.message.toLowerCase().includes('too many')) {
-                          setOtpError('Too many attempts. Please wait a few minutes before trying again.')
+                          errorMsg = 'Too many attempts. Please wait a few minutes before trying again.'
                         } else {
-                          setOtpError(err.message || 'Failed to send OTP. Please try again.')
+                          errorMsg = err.message || 'Failed to send OTP. Please try again.'
                         }
+                        showToast.error(errorMsg)
                       } finally {
                         setOtpLoading(false)
                       }
@@ -502,7 +499,6 @@ export default function Login() {
                       value={otp}
                       onChange={e => {
                         setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))
-                        setOtpError('')
                       }}
                       placeholder="Enter 6-digit OTP"
                       maxLength={6}
@@ -516,11 +512,10 @@ export default function Login() {
                       className="btn-verify-otp"
                       onClick={async () => {
                         if (otp.length !== 6) {
-                          setOtpError('Please enter 6-digit OTP')
+                          showToast.error('Please enter 6-digit OTP')
                           return
                         }
                         setOtpLoading(true)
-                        setOtpError('')
                         try {
                           const res = await fetchWithTimeout(`${API_URL}/api/auth/verify-otp`, {
                             method: 'POST',
@@ -535,21 +530,22 @@ export default function Login() {
 
                         await res.json()
                         setEmailVerified(true)
-                        setOtpError('')
-                        toast.success('Email verified successfully!')
+                        showToast.success('Email verified successfully!')
                         } catch (err) {
                           console.error('OTP verify error:', err)
+                          let errorMsg = ''
                           if (err.name === 'TypeError' && err.message.includes('fetch')) {
-                            setOtpError('Unable to connect to server. Please check your internet connection.')
+                            errorMsg = 'Unable to connect to server. Please check your internet connection.'
                           } else if (err.message.includes('timeout')) {
-                            setOtpError('Connection timeout. Please try again.')
+                            errorMsg = 'Connection timeout. Please try again.'
                           } else if (err.message.toLowerCase().includes('invalid') || err.message.toLowerCase().includes('incorrect')) {
-                            setOtpError('Incorrect OTP. Please check the code and try again.')
+                            errorMsg = 'Incorrect OTP. Please check the code and try again.'
                           } else if (err.message.toLowerCase().includes('expired')) {
-                            setOtpError('OTP has expired. Please request a new one.')
+                            errorMsg = 'OTP has expired. Please request a new one.'
                           } else {
-                            setOtpError(err.message || 'OTP verification failed. Please try again.')
+                            errorMsg = err.message || 'OTP verification failed. Please try again.'
                           }
+                          showToast.error(errorMsg)
                           setOtp('')
                         } finally {
                           setOtpLoading(false)
@@ -563,27 +559,16 @@ export default function Login() {
                 </>
               )}
 
-              {otpError && (
-                <div className="otp-error animation" style={{ ['--li']: 19.9, ['--S']: 2.9 }}>
-                  {otpError}
-                </div>
-              )}
-
-              {emailVerified && (
-                <div className="otp-success animation" style={{ ['--li']: 19.95, ['--S']: 2.95 }}>
-                  Email verified successfully!
-                </div>
-              )}
 
               <div className="input-box animation" style={{ ['--li']: 20, ['--S']: 3 }} data-password-visible={showRegPass}>
                 <input
                   type={showRegPass ? 'text' : 'password'}
                   name="new-password"
+                  id="reg-password"
                   autoComplete="new-password"
                   required
                   value={regPass}
                   onChange={e => setRegPass(e.target.value)}
-                  key={`reg-pass-${showRegPass}`}
                   aria-label="New password"
                   aria-required="true"
                   aria-describedby="password-requirements"
@@ -593,7 +578,20 @@ export default function Login() {
                 <button
                   type="button"
                   className="password-toggle"
-                  onClick={() => setShowRegPass(!showRegPass)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const input = document.getElementById('reg-password');
+                    if (input) {
+                      const cursorPosition = input.selectionStart;
+                      setShowRegPass(!showRegPass);
+                      setTimeout(() => {
+                        input.focus();
+                        input.setSelectionRange(cursorPosition, cursorPosition);
+                      }, 0);
+                    } else {
+                      setShowRegPass(!showRegPass);
+                    }
+                  }}
                   tabIndex={0}
                   aria-label={showRegPass ? "Hide password" : "Show password"}
                 >
@@ -628,11 +626,11 @@ export default function Login() {
                 <input
                   type={showConfirmPass ? 'text' : 'password'}
                   name="confirm-password"
+                  id="reg-confirm-password"
                   autoComplete="new-password"
                   required
                   value={confirmPass}
                   onChange={e => setConfirmPass(e.target.value)}
-                  key={`confirm-pass-${showConfirmPass}`}
                   aria-label="Confirm password"
                   aria-required="true"
                   aria-invalid={confirmPass && regPass !== confirmPass ? "true" : "false"}
@@ -642,7 +640,20 @@ export default function Login() {
                 <button
                   type="button"
                   className="password-toggle"
-                  onClick={() => setShowConfirmPass(!showConfirmPass)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const input = document.getElementById('reg-confirm-password');
+                    if (input) {
+                      const cursorPosition = input.selectionStart;
+                      setShowConfirmPass(!showConfirmPass);
+                      setTimeout(() => {
+                        input.focus();
+                        input.setSelectionRange(cursorPosition, cursorPosition);
+                      }, 0);
+                    } else {
+                      setShowConfirmPass(!showConfirmPass);
+                    }
+                  }}
                   tabIndex={0}
                   aria-label={showConfirmPass ? "Hide password" : "Show password"}
                 >
@@ -650,11 +661,6 @@ export default function Login() {
                 </button>
               </div>
 
-              {registerError && (
-                <div className="otp-error animation" style={{ ['--li']: 20.5, ['--S']: 3.5 }}>
-                  {registerError}
-                </div>
-              )}
 
               <div className="input-box animation" style={{ ['--li']: 21, ['--S']: 4 }}>
                 <button
@@ -666,32 +672,31 @@ export default function Login() {
                   onClick={async (e) => {
                     e.preventDefault()
                     if (!emailVerified) {
-                      setRegisterError('Please verify your email address first by entering the OTP')
+                      showToast.error('Please verify your email address first by entering the OTP')
                       return
                     }
 
                     if (!studentFullName || studentFullName.trim().length < 3) {
-                      setRegisterError('Please enter your full name (at least 3 characters)')
+                      showToast.error('Please enter your full name (at least 3 characters)')
                       return
                     }
 
                     if (!idNumber || idNumber.length !== 10) {
-                      setRegisterError('Please enter a valid 10-digit ID number')
+                      showToast.error('Please enter a valid 10-digit ID number')
                       return
                     }
 
                     if (!regPass || regPass.length < 6) {
-                      setRegisterError('Password must be at least 6 characters long')
+                      showToast.error('Password must be at least 6 characters long')
                       return
                     }
 
                     if (regPass !== confirmPass) {
-                      setRegisterError('Passwords do not match. Please check and try again.')
+                      showToast.error('Passwords do not match. Please check and try again.')
                       return
                     }
 
                     setRegisterLoading(true)
-                    setRegisterError('')
 
                     try {
                       const res = await fetchWithTimeout(`${API_URL}/api/auth/register`, {
@@ -717,7 +722,7 @@ export default function Login() {
                       localStorage.removeItem('user')
 
                       // Show success message
-                      alert('Registration successful! Please login with your credentials.')
+                      showToast.success('Registration successful! Please login with your credentials.')
 
                       // Switch to login view and clear form
                       setActive(false)
@@ -729,23 +734,23 @@ export default function Login() {
                       setEmailVerified(false)
                       setOtpSent(false)
                       setOtp('')
-                      setOtpError('')
-                      setRegisterError('')
 
                     } catch (err) {
                       console.error('Registration error:', err)
-                      // Provide specific error messages
+                      // Provide specific error messages with toast
+                      let errorMsg = ''
                       if (err.name === 'TypeError' && err.message.includes('fetch')) {
-                        setRegisterError(`Unable to connect to server. Please check your internet connection.`)
+                        errorMsg = 'Unable to connect to server. Please check your internet connection.'
                       } else if (err.message.includes('timeout')) {
-                        setRegisterError('Connection timeout. Please try again.')
+                        errorMsg = 'Connection timeout. Please try again.'
                       } else if (err.message.toLowerCase().includes('already exists') || err.message.toLowerCase().includes('duplicate')) {
-                        setRegisterError('An account with this email or ID already exists. Please login instead.')
+                        errorMsg = 'An account with this email or ID already exists. Please login instead.'
                       } else if (err.message.toLowerCase().includes('email')) {
-                        setRegisterError('Invalid email address. Please check and try again.')
+                        errorMsg = 'Invalid email address. Please check and try again.'
                       } else {
-                        setRegisterError(err.message || 'Registration failed. Please try again later.')
+                        errorMsg = err.message || 'Registration failed. Please try again later.'
                       }
+                      showToast.error(errorMsg)
                     } finally {
                       setRegisterLoading(false)
                     }
@@ -814,11 +819,6 @@ export default function Login() {
                       <box-icon type='solid' name='user' color="gray"></box-icon>
                     </div>
 
-                    {forgotPasswordError && (
-                      <div className="otp-error">
-                        {forgotPasswordError}
-                      </div>
-                    )}
 
                     <div className="input-box">
                       <button
@@ -882,11 +882,6 @@ export default function Login() {
                       <box-icon name='key' type='solid' color="gray"></box-icon>
                     </div>
 
-                    {forgotPasswordError && (
-                      <div className="otp-error">
-                        {forgotPasswordError}
-                      </div>
-                    )}
 
                     <div className="input-box">
                       <button
@@ -955,7 +950,6 @@ export default function Login() {
                     value={newPassword}
                     onChange={e => setNewPassword(e.target.value)}
                     placeholder="Enter new password"
-                    key={`new-pass-${showNewPassword}`}
                   />
                   <label>New Password</label>
                   <box-icon name='lock-alt' type='solid' color="gray"></box-icon>
@@ -978,7 +972,6 @@ export default function Login() {
                     value={confirmPassword}
                     onChange={e => setConfirmPassword(e.target.value)}
                     placeholder="Confirm new password"
-                    key={`confirm-new-pass-${showConfirmPassword}`}
                   />
                   <label>Confirm Password</label>
                   <box-icon name='lock-alt' type='solid' color="gray"></box-icon>

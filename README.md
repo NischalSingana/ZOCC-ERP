@@ -47,7 +47,7 @@ docker-compose up -d
 - **Frontend**: React + Vite + TailwindCSS + Recharts + React Router
 - **Backend**: Node.js + Express
 - **Database**: MongoDB
-- **Email**: Gmail SMTP
+- **Email**: Microsoft SMTP
 - **Deployment**: Docker
 
 ## Environment Variables

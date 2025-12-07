@@ -89,22 +89,22 @@ function checkDatabaseConnection(res) {
 // Email configuration
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.office365.com',
-  port: parseInt(process.env.SMTP_PORT) || 465,
-  secure: process.env.SMTP_SECURE === 'true' || true, // Default to true for port 465
+  port: parseInt(process.env.SMTP_PORT) || 587,
+  secure: process.env.SMTP_SECURE === 'true', // Only true if explicitly set
+  requireTLS: true, // Require TLS for Office365
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS
   },
   tls: {
     rejectUnauthorized: false,
-    ciphers: 'SSLv3'
+    minVersion: 'TLSv1.2'
   },
-  connectionTimeout: 60000, // 60 seconds
-  greetingTimeout: 30000, // 30 seconds
-  socketTimeout: 60000, // 60 seconds
-  pool: true, // Use connection pooling
-  maxConnections: 1,
-  maxMessages: 3
+  connectionTimeout: 10000, // 10 seconds - shorter timeout to fail faster
+  greetingTimeout: 5000, // 5 seconds
+  socketTimeout: 10000, // 10 seconds
+  debug: process.env.NODE_ENV === 'development', // Enable debug in dev
+  logger: process.env.NODE_ENV === 'development' // Enable logging in dev
 });
 
 transporter.verify((error) => {

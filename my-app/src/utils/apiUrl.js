@@ -1,9 +1,9 @@
 // Utility to get the API URL at runtime
-// Priority: 1. VITE_API_URL from build (if not default), 2. Production backend URL, 3. Same origin with port 4000, 4. localhost:4000
+// Priority: 1. VITE_API_URL from build (if set), 2. Production backend URL, 3. Same origin with port 4000, 4. localhost:4000
 export const getApiUrl = () => {
-  // If explicitly set during build and not the default, use it
+  // ALWAYS use VITE_API_URL if it's set (even if it's localhost for dev)
   const viteApiUrl = import.meta.env.VITE_API_URL;
-  if (viteApiUrl && viteApiUrl !== 'http://localhost:4000') {
+  if (viteApiUrl) {
     console.log('🔗 Using VITE_API_URL from build:', viteApiUrl);
     return viteApiUrl;
   }
@@ -12,30 +12,27 @@ export const getApiUrl = () => {
   if (typeof window !== 'undefined') {
     const { protocol, hostname } = window.location;
     
-    // If hostname is not localhost (production), try to use backend subdomain
+    // If hostname is not localhost (production), use backend.nischalsingana.com
     if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-      // Specific case: zeroone.sudheerbhuvana.in -> erpbackend.sudheerbhuvana.in
-      if (hostname === 'zeroone.sudheerbhuvana.in') {
-        const backendUrl = `${protocol}//erpbackend.sudheerbhuvana.in`;
-        console.log('🔗 Detected production (zeroone), using backend URL:', backendUrl);
+      // If frontend is at nischalsingana.com domain, use backend.nischalsingana.com
+      if (hostname.includes('nischalsingana.com') && hostname !== 'backend.nischalsingana.com') {
+        const backendUrl = `${protocol}//backend.nischalsingana.com`;
+        console.log('🔗 Detected nischalsingana.com domain, using backend URL:', backendUrl);
         return backendUrl;
       }
       
-      // Try common backend subdomain patterns
-      // If frontend is at erp.sudheerbhuvana.in, backend might be at erpbackend.sudheerbhuvana.in
-      if (hostname.includes('erp') && !hostname.includes('backend')) {
-        // Replace frontend subdomain with backend subdomain
-        const backendHostname = hostname.replace(/erp(?!backend)/, 'erpbackend');
-        const backendUrl = `${protocol}//${backendHostname}`;
-        console.log('🔗 Detected production, using backend URL:', backendUrl);
+      // If already on backend.nischalsingana.com, use same origin
+      if (hostname === 'backend.nischalsingana.com') {
+        const backendUrl = `${protocol}//${hostname}`;
+        console.log('🔗 Already on backend domain, using same origin:', backendUrl);
         return backendUrl;
       }
       
-      // If frontend is at a different domain, try erpbackend subdomain
+      // For other production domains, try backend subdomain pattern
       const domainParts = hostname.split('.');
       if (domainParts.length >= 2) {
         const baseDomain = domainParts.slice(-2).join('.'); // Get domain.com
-        const backendUrl = `${protocol}//erpbackend.${baseDomain}`;
+        const backendUrl = `${protocol}//backend.${baseDomain}`;
         console.log('🔗 Detected production, trying backend URL:', backendUrl);
         return backendUrl;
       }

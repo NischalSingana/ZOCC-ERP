@@ -73,12 +73,22 @@ app.use(cors({
       return callback(null, true);
     }
     
+    // Also check if origin contains nischalsingana.com (for subdomains)
+    if (origin.includes('nischalsingana.com')) {
+      return callback(null, true);
+    }
+    
     // Allow in development mode
     if (process.env.NODE_ENV !== 'production') {
       return callback(null, true);
     }
     
-    // Reject in production if not in allowed list
+    // Allow all origins in production if CORS_ORIGIN is not explicitly set
+    if (!process.env.CORS_ORIGIN) {
+      return callback(null, true);
+    }
+    
+    // Reject only if CORS_ORIGIN is explicitly set and origin doesn't match
     callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
@@ -87,6 +97,24 @@ app.use(cors({
   exposedHeaders: ['Content-Length', 'Content-Type'],
   maxAge: 86400
 }));
+
+// Add middleware to ensure CORS headers are always set on error responses
+app.use((req, res, next) => {
+  // Store original json method
+  const originalJson = res.json;
+  
+  // Override json method to always include CORS headers
+  res.json = function(data) {
+    const origin = req.headers.origin;
+    if (origin && (allowedOrigins.includes(origin) || origin.includes('nischalsingana.com'))) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+    }
+    return originalJson.call(this, data);
+  };
+  
+  next();
+});
 
 // Helper functions
 function generateOTP() {

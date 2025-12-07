@@ -56,6 +56,7 @@ const allowedOrigins = process.env.CORS_ORIGIN
   : [
       'https://nischalsingana.com',
       'https://www.nischalsingana.com',
+      'https://erp.nischalsingana.com',
       'https://backend.nischalsingana.com',
       'http://localhost:5173',
       'http://localhost:3000',
@@ -2117,6 +2118,21 @@ app.put('/api/queries/:id/reply', authenticateToken, requireAdmin, async (req, r
 });
 
 // ========== UTILITY ROUTES ==========
+
+// Root route
+app.get('/', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    message: 'ZOCC ERP API is running', 
+    version: '1.0.0',
+    endpoints: {
+      health: '/health',
+      test: '/test',
+      api: '/api'
+    },
+    timestamp: new Date().toISOString() 
+  });
+});
 
 app.get('/test', (req, res) => {
   res.json({ status: 'ok', message: 'Backend is responding!', timestamp: new Date().toISOString() });

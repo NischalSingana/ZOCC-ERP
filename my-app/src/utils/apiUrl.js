@@ -1,11 +1,16 @@
 // Utility to get the API URL at runtime
-// Priority: 1. VITE_API_URL from build (if set), 2. Production backend URL, 3. Same origin with port 4000, 4. localhost:4000
+// Priority: 1. VITE_API_URL from build (if set and valid), 2. Production backend URL, 3. Same origin with port 4000, 4. localhost:4000
 export const getApiUrl = () => {
-  // ALWAYS use VITE_API_URL if it's set (even if it's localhost for dev)
+  // Use VITE_API_URL if it's set and not the wrong domain
   const viteApiUrl = import.meta.env.VITE_API_URL;
-  if (viteApiUrl) {
+  if (viteApiUrl && !viteApiUrl.includes('spendingcalculator.xyz')) {
     console.log('🔗 Using VITE_API_URL from build:', viteApiUrl);
     return viteApiUrl;
+  }
+  
+  // If VITE_API_URL is set but wrong, ignore it and use auto-detection
+  if (viteApiUrl && viteApiUrl.includes('spendingcalculator.xyz')) {
+    console.warn('⚠️ Ignoring incorrect VITE_API_URL:', viteApiUrl);
   }
   
   // If running in browser, check if we're in production

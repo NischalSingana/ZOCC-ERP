@@ -54,40 +54,44 @@ app.use(express.urlencoded({ extended: true }));
 const allowedOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
   : [
-      'https://nischalsingana.com',
-      'https://www.nischalsingana.com',
-      'https://erp.nischalsingana.com',
-      'https://backend.nischalsingana.com',
-      'http://localhost:5173',
-      'http://localhost:3000',
-      'http://localhost:4173'
-    ];
+    'https://nischalsingana.com',
+    'https://www.nischalsingana.com',
+    'https://erp.nischalsingana.com',
+    'https://backend.nischalsingana.com',
+    'https://spendingcalculator.xyz',
+    'https://www.spendingcalculator.xyz',
+    'https://backend.spendingcalculator.xyz',
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://localhost:4173'
+  ];
 
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    
+
     // Check if origin is in allowed list
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
-    
-    // Also check if origin contains nischalsingana.com (for subdomains)
-    if (origin.includes('nischalsingana.com')) {
+
+    // Check for trusted domains (nischalsingana.com and spendingcalculator.xyz)
+    const trustedDomains = ['nischalsingana.com', 'spendingcalculator.xyz'];
+    if (trustedDomains.some(domain => origin.includes(domain))) {
       return callback(null, true);
     }
-    
+
     // Allow in development mode
     if (process.env.NODE_ENV !== 'production') {
       return callback(null, true);
     }
-    
+
     // Allow all origins in production if CORS_ORIGIN is not explicitly set
     if (!process.env.CORS_ORIGIN) {
       return callback(null, true);
     }
-    
+
     // Reject only if CORS_ORIGIN is explicitly set and origin doesn't match
     callback(new Error('Not allowed by CORS'));
   },
@@ -102,17 +106,18 @@ app.use(cors({
 app.use((req, res, next) => {
   // Store original json method
   const originalJson = res.json;
-  
+
   // Override json method to always include CORS headers
-  res.json = function(data) {
+  res.json = function (data) {
     const origin = req.headers.origin;
-    if (origin && (allowedOrigins.includes(origin) || origin.includes('nischalsingana.com'))) {
+    const trustedDomains = ['nischalsingana.com', 'spendingcalculator.xyz'];
+    if (origin && (allowedOrigins.includes(origin) || trustedDomains.some(domain => origin.includes(domain)))) {
       res.setHeader('Access-Control-Allow-Origin', origin);
       res.setHeader('Access-Control-Allow-Credentials', 'true');
     }
     return originalJson.call(this, data);
   };
-  
+
   next();
 });
 
@@ -141,26 +146,67 @@ function checkDatabaseConnection(res) {
   return true;
 }
 
-// Email configuration
-const transporter = nodemailer.createTransport({
-  host: 'smtp.office365.com',
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS
-  },
-  tls: {
-    rejectUnauthorized: false
-  }
-});
+// Email configuration with improved connection settings
+const createSMTPTransporter = (port = 587, secure = false) => {
+  return nodemailer.createTransport({
+    host: process.env.SMTP_HOST || 'smtp.office365.com',
+    port: port,
+    secure: secure, // true for 465, false for other ports
+    requireTLS: !secure, // Require TLS for port 587
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS
+    },
+    tls: {
+      rejectUnauthorized: false,
+      minVersion: 'TLSv1.2',
+      ciphers: 'SSLv3'
+    },
+    connectionTimeout: 10000, // 10 seconds
+    greetingTimeout: 5000, // 5 seconds
+    socketTimeout: 10000, // 10 seconds
+    debug: process.env.NODE_ENV === 'development',
+    logger: process.env.NODE_ENV === 'development'
+  });
+};
 
-transporter.verify((error) => {
-  if (error) {
-    console.error('❌ Outlook SMTP connection failed:', error.message);
-  } else {
-    console.log('✅ Outlook SMTP ready');
+// Try multiple SMTP configurations (port 587 first, then 465)
+let transporter = createSMTPTransporter(587, false);
+let smtpWorking = false;
+
+// Verify SMTP connection with fallback to port 465
+const verifySMTPConnection = async () => {
+  try {
+    await transporter.verify();
+    smtpWorking = true;
+    console.log('✅ Outlook SMTP ready (port 587)');
+    return true;
+  } catch (error) {
+    console.warn('⚠️ SMTP port 587 failed, trying port 465...');
+    console.warn('   Error:', error.message);
+
+    // Try port 465 with SSL
+    try {
+      transporter = createSMTPTransporter(465, true);
+      await transporter.verify();
+      smtpWorking = true;
+      console.log('✅ Outlook SMTP ready (port 465)');
+      return true;
+    } catch (error465) {
+      console.error('❌ Outlook SMTP connection failed on both ports:');
+      console.error('   Port 587:', error.message);
+      console.error('   Port 465:', error465.message);
+      console.error('   This is likely a network/firewall issue.');
+      console.error('   Contact your hosting provider to unblock SMTP ports.');
+      smtpWorking = false;
+      return false;
+    }
   }
+};
+
+// Verify connection on startup (non-blocking)
+verifySMTPConnection().catch(err => {
+  console.error('SMTP verification error:', err);
 });
 
 // Email templates
@@ -304,26 +350,59 @@ app.post('/api/auth/request-otp', async (req, res) => {
       html: getOTPEmailTemplate(otp)
     };
 
-    // Try to send email, but don't fail if SMTP is unavailable
+    // Try to send email with retry logic and port fallback
+    let emailSent = false;
+    let smtpError = null;
+
+    // Try sending with current transporter
     try {
       await withTimeout(
         transporter.sendMail(mailOptions),
         15000,
         'SMTP timeout'
       );
+      emailSent = true;
       console.log(`✅ OTP email sent to ${email}`);
-    } catch (smtpError) {
-      console.error('⚠️ SMTP Error (OTP still generated):', smtpError.message);
-      console.log(`📧 OTP for ${email}: ${otp} (Email not sent due to SMTP issue)`);
-      // Continue - OTP is still valid and stored in database
-      // In production, you might want to log this to a monitoring service
+    } catch (firstError) {
+      smtpError = firstError;
+      console.warn(`⚠️ SMTP send failed (port ${transporter.options.port}):`, firstError.message);
+
+      // If port 587 failed, try port 465
+      if (transporter.options.port === 587 && !transporter.options.secure) {
+        console.log('🔄 Retrying with port 465 (SSL)...');
+        try {
+          const altTransporter = createSMTPTransporter(465, true);
+          await withTimeout(
+            altTransporter.sendMail(mailOptions),
+            15000,
+            'SMTP timeout'
+          );
+          emailSent = true;
+          // Update main transporter if this works
+          transporter = altTransporter;
+          smtpWorking = true;
+          console.log(`✅ OTP email sent to ${email} (via port 465)`);
+        } catch (secondError) {
+          console.error('❌ Both SMTP ports failed:', secondError.message);
+          smtpError = secondError;
+        }
+      }
+    }
+
+    if (!emailSent) {
+      console.error('⚠️ SMTP Error (OTP still generated):', smtpError?.message || 'Unknown error');
+      console.log(`📧 OTP for ${email}: ${otp} (Email not sent - check SMTP configuration)`);
+      console.log('💡 Solutions:');
+      console.log('   1. Contact hosting provider to unblock SMTP ports (587, 465)');
+      console.log('   2. Check firewall settings');
+      console.log('   3. Verify SMTP credentials are correct');
     }
 
     // Always return success with OTP (for testing when SMTP is down)
     // In production, you might want to return different messages based on SMTP success
-    res.json({ 
-      success: true, 
-      message: 'OTP generated successfully', 
+    res.json({
+      success: true,
+      message: 'OTP generated successfully',
       expiresIn: OTP_TTL_MS / 1000,
       // Include OTP in response for testing (remove in production)
       ...(process.env.NODE_ENV === 'development' && { otp: otp, note: 'OTP included for testing - SMTP may be unavailable' })
@@ -2166,16 +2245,16 @@ app.put('/api/queries/:id/reply', authenticateToken, requireAdmin, async (req, r
 
 // Root route
 app.get('/', (req, res) => {
-  res.json({ 
-    status: 'ok', 
-    message: 'ZOCC ERP API is running', 
+  res.json({
+    status: 'ok',
+    message: 'ZOCC ERP API is running',
     version: '1.0.0',
     endpoints: {
       health: '/health',
       test: '/test',
       api: '/api'
     },
-    timestamp: new Date().toISOString() 
+    timestamp: new Date().toISOString()
   });
 });
 
@@ -2186,6 +2265,65 @@ app.get('/test', (req, res) => {
 app.get('/health', (req, res) => {
   const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
   res.json({ status: 'ok', database: dbStatus, timestamp: new Date().toISOString() });
+});
+
+// SMTP diagnostic endpoint
+app.get('/api/smtp/test', async (req, res) => {
+  try {
+    const results = {
+      smtpConfigured: !!(process.env.SMTP_USER && process.env.SMTP_PASS),
+      smtpUser: process.env.SMTP_USER || 'Not set',
+      smtpHost: process.env.SMTP_HOST || 'smtp.office365.com',
+      currentPort: transporter.options.port,
+      currentSecure: transporter.options.secure,
+      smtpWorking: smtpWorking,
+      tests: []
+    };
+
+    // Test port 587
+    try {
+      const test587 = createSMTPTransporter(587, false);
+      await Promise.race([
+        test587.verify(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 10000))
+      ]);
+      results.tests.push({ port: 587, secure: false, status: 'success' });
+    } catch (error) {
+      results.tests.push({ port: 587, secure: false, status: 'failed', error: error.message });
+    }
+
+    // Test port 465
+    try {
+      const test465 = createSMTPTransporter(465, true);
+      await Promise.race([
+        test465.verify(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 10000))
+      ]);
+      results.tests.push({ port: 465, secure: true, status: 'success' });
+    } catch (error) {
+      results.tests.push({ port: 465, secure: true, status: 'failed', error: error.message });
+    }
+
+    res.json({
+      success: true,
+      ...results,
+      recommendations: results.tests.every(t => t.status === 'failed')
+        ? [
+          'All SMTP ports are blocked. Contact your hosting provider.',
+          'Request to unblock outbound ports 587 and 465.',
+          'Alternative: Use Microsoft Graph API instead of SMTP.'
+        ]
+        : results.tests.some(t => t.status === 'success')
+          ? ['SMTP is working! One or more ports are accessible.']
+          : ['Checking SMTP connectivity...']
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'SMTP diagnostic failed',
+      message: error.message
+    });
+  }
 });
 
 app.get('/test-email', async (req, res) => {

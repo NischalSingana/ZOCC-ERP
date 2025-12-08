@@ -3,36 +3,47 @@
 export const getApiUrl = () => {
   // Use VITE_API_URL if it's set and not the wrong domain
   const viteApiUrl = import.meta.env.VITE_API_URL;
-  if (viteApiUrl && !viteApiUrl.includes('spendingcalculator.xyz')) {
+  if (viteApiUrl && !viteApiUrl.includes('spendingcalculator.xyz') && viteApiUrl.startsWith('http')) {
     console.log('🔗 Using VITE_API_URL from build:', viteApiUrl);
     return viteApiUrl;
   }
-  
+
   // If VITE_API_URL is set but wrong, ignore it and use auto-detection
   if (viteApiUrl && viteApiUrl.includes('spendingcalculator.xyz')) {
     console.warn('⚠️ Ignoring incorrect VITE_API_URL:', viteApiUrl);
   }
-  
+
   // If running in browser, check if we're in production
   if (typeof window !== 'undefined') {
     const { protocol, hostname } = window.location;
-    
-    // If hostname is not localhost (production), use backend.nischalsingana.com
+
+    // If hostname is not localhost (production), use backend subdomain
     if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-      // If frontend is at nischalsingana.com domain, use backend.nischalsingana.com
-      if (hostname.includes('nischalsingana.com') && hostname !== 'backend.nischalsingana.com') {
-        const backendUrl = `${protocol}//backend.nischalsingana.com`;
-        console.log('🔗 Detected nischalsingana.com domain, using backend URL:', backendUrl);
-        return backendUrl;
+      // Check for known production domains
+      const productionDomains = [
+        { frontend: 'nischalsingana.com', backend: 'backend.nischalsingana.com' },
+        { frontend: 'erp.nischalsingana.com', backend: 'backend.nischalsingana.com' },
+        { frontend: 'www.nischalsingana.com', backend: 'backend.nischalsingana.com' },
+        { frontend: 'spendingcalculator.xyz', backend: 'backend.spendingcalculator.xyz' },
+        { frontend: 'www.spendingcalculator.xyz', backend: 'backend.spendingcalculator.xyz' }
+      ];
+
+      // Check if current hostname matches any known frontend domain
+      for (const domain of productionDomains) {
+        if (hostname === domain.frontend || hostname.includes(domain.frontend)) {
+          const backendUrl = `${protocol}//${domain.backend}`;
+          console.log(`🔗 Detected ${domain.frontend}, using backend URL:`, backendUrl);
+          return backendUrl;
+        }
       }
-      
-      // If already on backend.nischalsingana.com, use same origin
-      if (hostname === 'backend.nischalsingana.com') {
+
+      // If already on a backend domain, use same origin
+      if (hostname.startsWith('backend.')) {
         const backendUrl = `${protocol}//${hostname}`;
         console.log('🔗 Already on backend domain, using same origin:', backendUrl);
         return backendUrl;
       }
-      
+
       // For other production domains, try backend subdomain pattern
       const domainParts = hostname.split('.');
       if (domainParts.length >= 2) {
@@ -42,11 +53,11 @@ export const getApiUrl = () => {
         return backendUrl;
       }
     }
-    
+
     // For localhost or same-host deployments, use same hostname with port 4000
     return `${protocol}//${hostname}:4000`;
   }
-  
+
   // Fallback for SSR or other environments
   return 'http://localhost:4000';
 };

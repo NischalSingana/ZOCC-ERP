@@ -13,11 +13,14 @@ const SessionManagement = () => {
     title: '',
     description: '',
     date: '',
-    startTime: '',
-    endTime: '',
+    startHour: '',
+    startMinute: '',
+    startPeriod: 'AM',
+    endHour: '',
+    endMinute: '',
+    endPeriod: 'AM',
     venue: '',
     trainer: '',
-    maxSeats: 50,
     joinLink: '',
   });
 
@@ -49,11 +52,27 @@ const SessionManagement = () => {
         : '/api/sessions';
       const method = editingSession ? 'put' : 'post';
 
+      // Convert time fields to 24-hour format
+      const convertTo24Hour = (hour, minute, period) => {
+        if (!hour || !minute) return null;
+        let hour24 = parseInt(hour);
+        if (period === 'PM' && hour24 !== 12) hour24 += 12;
+        if (period === 'AM' && hour24 === 12) hour24 = 0;
+        return `${hour24.toString().padStart(2, '0')}:${minute.padStart(2, '0')}`;
+      };
+
+      const startTime24 = convertTo24Hour(formData.startHour, formData.startMinute, formData.startPeriod);
+      const endTime24 = convertTo24Hour(formData.endHour, formData.endMinute, formData.endPeriod);
+
       const response = await axiosInstance[method](url, {
-        ...formData,
+        title: formData.title,
+        description: formData.description,
+        venue: formData.venue,
+        trainer: formData.trainer,
+        joinLink: formData.joinLink,
         date: new Date(formData.date).toISOString(),
-        startTime: formData.startTime ? new Date(`${formData.date}T${formData.startTime}`).toISOString() : null,
-        endTime: formData.endTime ? new Date(`${formData.date}T${formData.endTime}`).toISOString() : null,
+        startTime: startTime24 ? new Date(`${formData.date}T${startTime24}`).toISOString() : null,
+        endTime: endTime24 ? new Date(`${formData.date}T${endTime24}`).toISOString() : null,
       });
 
       if (response.data?.success) {
@@ -64,11 +83,14 @@ const SessionManagement = () => {
           title: '',
           description: '',
           date: '',
-          startTime: '',
-          endTime: '',
+          startHour: '',
+          startMinute: '',
+          startPeriod: 'AM',
+          endHour: '',
+          endMinute: '',
+          endPeriod: 'AM',
           venue: '',
           trainer: '',
-          maxSeats: 50,
           joinLink: '',
         });
         fetchSessions();
@@ -84,7 +106,7 @@ const SessionManagement = () => {
       showToast.error('Invalid session ID');
       return;
     }
-    
+
     if (!confirm('Are you sure you want to delete this session?')) return;
 
     try {
@@ -99,33 +121,69 @@ const SessionManagement = () => {
   };
 
   const handleEdit = (session) => {
+    // Helper to convert 24-hour time to 12-hour format with AM/PM
+    const convertTo12Hour = (isoTime) => {
+      if (!isoTime) return { hour: '', minute: '', period: 'AM' };
+      const date = new Date(isoTime);
+      let hours = date.getHours();
+      const minutes = date.getMinutes();
+      const period = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12 || 12;
+      return {
+        hour: hours.toString(),
+        minute: minutes.toString().padStart(2, '0'),
+        period
+      };
+    };
+
+    const startTime = convertTo12Hour(session.startTime);
+    const endTime = convertTo12Hour(session.endTime);
+
     setEditingSession(session);
     setFormData({
       title: session.title || '',
       description: session.description || '',
       date: session.date ? new Date(session.date).toISOString().split('T')[0] : '',
-      startTime: session.startTime ? new Date(session.startTime).toTimeString().slice(0, 5) : '',
-      endTime: session.endTime ? new Date(session.endTime).toTimeString().slice(0, 5) : '',
+      startHour: startTime.hour,
+      startMinute: startTime.minute,
+      startPeriod: startTime.period,
+      endHour: endTime.hour,
+      endMinute: endTime.minute,
+      endPeriod: endTime.period,
       venue: session.venue || '',
       trainer: session.trainer || '',
-      maxSeats: session.maxSeats || 50,
       joinLink: session.joinLink || '',
     });
     setShowForm(true);
   };
 
   const columns = [
-    { key: 'title', header: 'Title' },
+    {
+      key: 'title',
+      header: 'Title',
+      cellClassName: 'break-words',
+      headerClassName: 'w-[35%]'
+    },
     {
       key: 'date',
       header: 'Date',
       render: (session) => new Date(session.date).toLocaleDateString(),
+      headerClassName: 'w-[20%]'
     },
-    { key: 'venue', header: 'Venue' },
-    { key: 'trainer', header: 'Trainer' },
+    {
+      key: 'venue',
+      header: 'Venue',
+      headerClassName: 'w-[15%]'
+    },
+    {
+      key: 'trainer',
+      header: 'Trainer',
+      headerClassName: 'w-[20%]'
+    },
     {
       key: 'actions',
       header: 'Actions',
+      headerClassName: 'w-[10%]',
       render: (session) => (
         <div className="flex gap-2">
           <button
@@ -164,11 +222,14 @@ const SessionManagement = () => {
               title: '',
               description: '',
               date: '',
-              startTime: '',
-              endTime: '',
+              startHour: '',
+              startMinute: '',
+              startPeriod: 'AM',
+              endHour: '',
+              endMinute: '',
+              endPeriod: 'AM',
               venue: '',
               trainer: '',
-              maxSeats: 50,
               joinLink: '',
             });
           }}
@@ -226,34 +287,69 @@ const SessionManagement = () => {
                 <label className="block text-sm font-medium text-zocc-blue-300 mb-2">
                   Start Time
                 </label>
-                <input
-                  type="time"
-                  value={formData.startTime}
-                  onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                  className="w-full px-4 py-2 bg-zocc-blue-800/50 border border-zocc-blue-700/30 rounded-lg text-white"
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    min="1"
+                    max="12"
+                    placeholder="HH"
+                    value={formData.startHour}
+                    onChange={(e) => setFormData({ ...formData, startHour: e.target.value })}
+                    className="w-20 px-4 py-2 bg-zocc-blue-800/50 border border-zocc-blue-700/30 rounded-lg text-white text-center"
+                  />
+                  <span className="text-white self-center">:</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="59"
+                    placeholder="MM"
+                    value={formData.startMinute}
+                    onChange={(e) => setFormData({ ...formData, startMinute: e.target.value.padStart(2, '0') })}
+                    className="w-20 px-4 py-2 bg-zocc-blue-800/50 border border-zocc-blue-700/30 rounded-lg text-white text-center"
+                  />
+                  <select
+                    value={formData.startPeriod}
+                    onChange={(e) => setFormData({ ...formData, startPeriod: e.target.value })}
+                    className="px-4 py-2 bg-zocc-blue-800/50 border border-zocc-blue-700/30 rounded-lg text-white"
+                  >
+                    <option value="AM">AM</option>
+                    <option value="PM">PM</option>
+                  </select>
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-zocc-blue-300 mb-2">
                   End Time
                 </label>
-                <input
-                  type="time"
-                  value={formData.endTime}
-                  onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                  className="w-full px-4 py-2 bg-zocc-blue-800/50 border border-zocc-blue-700/30 rounded-lg text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-zocc-blue-300 mb-2">
-                  Max Seats
-                </label>
-                <input
-                  type="number"
-                  value={formData.maxSeats}
-                  onChange={(e) => setFormData({ ...formData, maxSeats: parseInt(e.target.value) })}
-                  className="w-full px-4 py-2 bg-zocc-blue-800/50 border border-zocc-blue-700/30 rounded-lg text-white"
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    min="1"
+                    max="12"
+                    placeholder="HH"
+                    value={formData.endHour}
+                    onChange={(e) => setFormData({ ...formData, endHour: e.target.value })}
+                    className="w-20 px-4 py-2 bg-zocc-blue-800/50 border border-zocc-blue-700/30 rounded-lg text-white text-center"
+                  />
+                  <span className="text-white self-center">:</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="59"
+                    placeholder="MM"
+                    value={formData.endMinute}
+                    onChange={(e) => setFormData({ ...formData, endMinute: e.target.value.padStart(2, '0') })}
+                    className="w-20 px-4 py-2 bg-zocc-blue-800/50 border border-zocc-blue-700/30 rounded-lg text-white text-center"
+                  />
+                  <select
+                    value={formData.endPeriod}
+                    onChange={(e) => setFormData({ ...formData, endPeriod: e.target.value })}
+                    className="px-4 py-2 bg-zocc-blue-800/50 border border-zocc-blue-700/30 rounded-lg text-white"
+                  >
+                    <option value="AM">AM</option>
+                    <option value="PM">PM</option>
+                  </select>
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-zocc-blue-300 mb-2">
@@ -325,4 +421,3 @@ const SessionManagement = () => {
 };
 
 export default SessionManagement;
-

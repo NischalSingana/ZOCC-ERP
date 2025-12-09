@@ -49,7 +49,7 @@ const Contact = () => {
                 </div>
                 <div>
                   <h3 className="text-white font-medium mb-1">Email</h3>
-                  <p className="text-zocc-blue-300 text-sm">support@zocc.kluniversity.in</p>
+                  <p className="text-zocc-blue-300 text-sm">zeroone@kluniversity.in</p>
                 </div>
               </div>
               <div className="flex items-start gap-4">
@@ -58,7 +58,7 @@ const Contact = () => {
                 </div>
                 <div>
                   <h3 className="text-white font-medium mb-1">Phone</h3>
-                  <p className="text-zocc-blue-300 text-sm">+91 9876543210</p>
+                  <p className="text-zocc-blue-300 text-sm">+91 7981919508</p>
                 </div>
               </div>
               <div className="flex items-start gap-4">

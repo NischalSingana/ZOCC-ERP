@@ -21,6 +21,7 @@ const SessionManagement = () => {
     endMinute: '',
     endPeriod: 'AM',
     venue: '',
+    trainer: '',
     joinLink: '',
   });
 
@@ -91,6 +92,7 @@ const SessionManagement = () => {
           endMinute: '',
           endPeriod: 'AM',
           venue: '',
+          trainer: '',
           joinLink: '',
         });
         fetchSessions();
@@ -152,6 +154,7 @@ const SessionManagement = () => {
       endMinute: endTime.minute,
       endPeriod: endTime.period,
       venue: session.venue || '',
+      trainer: session.trainer || '',
       joinLink: session.joinLink || '',
     });
     setShowForm(true);
@@ -225,6 +228,7 @@ const SessionManagement = () => {
               endMinute: '',
               endPeriod: 'AM',
               venue: '',
+              trainer: '',
               joinLink: '',
             });
           }}

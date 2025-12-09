@@ -154,10 +154,11 @@ const TaskAdmin = () => {
   };
 
   const columns = [
-    { key: 'title', header: 'Title' },
+    { key: 'title', header: 'Title', cellClassName: 'font-semibold' },
     {
       key: 'content',
       header: 'Content',
+      cellClassName: 'align-top',
       render: (task) => (
         <span className="text-zocc-blue-300 text-sm line-clamp-2 max-w-md">
           {task.content || 'No content'}
@@ -167,6 +168,8 @@ const TaskAdmin = () => {
     {
       key: 'isActive',
       header: 'Status',
+      headerClassName: 'text-center',
+      cellClassName: 'text-center',
       render: (task) => (
         <span
           className={`px-2 py-1 rounded text-xs ${
@@ -182,6 +185,8 @@ const TaskAdmin = () => {
     {
       key: 'attachments',
       header: 'Attachments',
+      headerClassName: 'text-center',
+      cellClassName: 'text-center',
       render: (task) => (
         <span className="text-zocc-blue-300 text-sm">
           {task.attachments?.length || 0} file(s)
@@ -191,6 +196,8 @@ const TaskAdmin = () => {
     {
       key: 'createdAt',
       header: 'Created',
+      headerClassName: 'text-center',
+      cellClassName: 'text-center whitespace-nowrap',
       render: (task) => 
         task.createdAt 
           ? new Date(task.createdAt).toLocaleDateString()
@@ -199,8 +206,10 @@ const TaskAdmin = () => {
     {
       key: 'actions',
       header: 'Actions',
+      headerClassName: 'text-center',
+      cellClassName: 'text-center',
       render: (task) => (
-        <div className="flex gap-2">
+        <div className="flex gap-2 justify-center">
           <button
             onClick={() => handleEdit(task)}
             className="p-2 hover:bg-zocc-blue-800 rounded-lg transition-colors"

@@ -63,10 +63,10 @@ const AttendanceAdmin = () => {
         showToast.success('Please select a session first');
         return;
       }
-      
+
       // Ensure userId is a string
       const userIdString = studentId?.toString() || studentId;
-      
+
       await axiosInstance.post('/api/attendance', {
         sessionId: sessionId.toString(),
         userId: userIdString,
@@ -124,7 +124,7 @@ const AttendanceAdmin = () => {
 
       // Generate filename with session title and date
       const sessionTitle = selectedSession.title || 'Session';
-      const sessionDate = selectedSession.date 
+      const sessionDate = selectedSession.date
         ? new Date(selectedSession.date).toISOString().split('T')[0]
         : new Date().toISOString().split('T')[0];
       const filename = `Attendance_${sessionTitle.replace(/[^a-z0-9]/gi, '_')}_${sessionDate}.xlsx`;
@@ -139,32 +139,45 @@ const AttendanceAdmin = () => {
   };
 
   const columns = [
-    { key: 'studentFullName', header: 'Student Name' },
-    { key: 'idNumber', header: 'ID Number' },
-    { key: 'email', header: 'Email' },
+    {
+      key: 'studentFullName',
+      header: 'Student Name',
+      headerClassName: 'w-[20%]'
+    },
+    {
+      key: 'idNumber',
+      header: 'ID Number',
+      headerClassName: 'w-[15%]'
+    },
+    {
+      key: 'email',
+      header: 'Email',
+      headerClassName: 'w-[25%]',
+      cellClassName: 'break-words'
+    },
     {
       key: 'status',
       header: 'Status',
+      headerClassName: 'w-[15%]',
       render: (item) => {
         const status = item.status?.toUpperCase();
         if (!status || status === 'NULL' || status === 'UNDEFINED') {
           return (
-            <span className="px-2 py-1 rounded text-xs bg-gray-500/20 text-gray-400">
+            <span className="px-2 py-1 rounded text-xs bg-gray-500/20 text-gray-400 whitespace-nowrap inline-block">
               Not Marked
             </span>
           );
         }
         return (
           <span
-            className={`px-2 py-1 rounded text-xs ${
-              status === 'PRESENT'
+            className={`px-2 py-1 rounded text-xs whitespace-nowrap inline-block ${status === 'PRESENT'
                 ? 'bg-green-500/20 text-green-400'
                 : status === 'LATE'
-                ? 'bg-yellow-500/20 text-yellow-400'
-                : status === 'EXCUSED'
-                ? 'bg-blue-500/20 text-blue-400'
-                : 'bg-red-500/20 text-red-400'
-            }`}
+                  ? 'bg-yellow-500/20 text-yellow-400'
+                  : status === 'EXCUSED'
+                    ? 'bg-blue-500/20 text-blue-400'
+                    : 'bg-red-500/20 text-red-400'
+              }`}
           >
             {status}
           </span>
@@ -174,6 +187,7 @@ const AttendanceAdmin = () => {
     {
       key: 'actions',
       header: 'Actions',
+      headerClassName: 'w-[25%]',
       render: (item) => (
         <div className="flex gap-2">
           <button
@@ -240,11 +254,10 @@ const AttendanceAdmin = () => {
                 <button
                   key={session.id || session._id}
                   onClick={() => setSelectedSession(session)}
-                  className={`w-full text-left p-4 rounded-lg transition-all ${
-                    (selectedSession?.id || selectedSession?._id) === (session.id || session._id)
+                  className={`w-full text-left p-4 rounded-lg transition-all ${(selectedSession?.id || selectedSession?._id) === (session.id || session._id)
                       ? 'bg-zocc-blue-600 border-2 border-zocc-blue-500'
                       : 'bg-zocc-blue-800/30 border border-zocc-blue-700/30 hover:bg-zocc-blue-800/50'
-                  }`}
+                    }`}
                 >
                   <h3 className="text-white font-medium">{session.title}</h3>
                   <p className="text-sm text-zocc-blue-300">

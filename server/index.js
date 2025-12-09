@@ -18,6 +18,7 @@ import Announcement from './models/Announcement.js';
 import Project from './models/Project.js';
 import ProjectSubmission from './models/ProjectSubmission.js';
 import Query from './models/Query.js';
+import Task from './models/Task.js';
 
 dotenv.config();
 
@@ -146,67 +147,27 @@ function checkDatabaseConnection(res) {
   return true;
 }
 
-// Email configuration with improved connection settings
-const createSMTPTransporter = (port = 587, secure = false) => {
-  return nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.office365.com',
-    port: port,
-    secure: secure, // true for 465, false for other ports
-    requireTLS: !secure, // Require TLS for port 587
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS
-    },
-    tls: {
-      rejectUnauthorized: false,
-      minVersion: 'TLSv1.2',
-      ciphers: 'SSLv3'
-    },
-    connectionTimeout: 10000, // 10 seconds
-    greetingTimeout: 5000, // 5 seconds
-    socketTimeout: 10000, // 10 seconds
-    debug: process.env.NODE_ENV === 'development',
-    logger: process.env.NODE_ENV === 'development'
-  });
-};
-
-// Try multiple SMTP configurations (port 587 first, then 465)
-let transporter = createSMTPTransporter(587, false);
-let smtpWorking = false;
-
-// Verify SMTP connection with fallback to port 465
-const verifySMTPConnection = async () => {
-  try {
-    await transporter.verify();
-    smtpWorking = true;
-    console.log('✅ Outlook SMTP ready (port 587)');
-    return true;
-  } catch (error) {
-    console.warn('⚠️ SMTP port 587 failed, trying port 465...');
-    console.warn('   Error:', error.message);
-
-    // Try port 465 with SSL
-    try {
-      transporter = createSMTPTransporter(465, true);
-      await transporter.verify();
-      smtpWorking = true;
-      console.log('✅ Outlook SMTP ready (port 465)');
-      return true;
-    } catch (error465) {
-      console.error('❌ Outlook SMTP connection failed on both ports:');
-      console.error('   Port 587:', error.message);
-      console.error('   Port 465:', error465.message);
-      console.error('   This is likely a network/firewall issue.');
-      console.error('   Contact your hosting provider to unblock SMTP ports.');
-      smtpWorking = false;
-      return false;
-    }
+// Email configuration
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST || 'smtp.office365.com',
+  port: 587,
+  secure: false,
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS
+  },
+  tls: {
+    rejectUnauthorized: false
   }
-};
+});
 
-// Verify connection on startup (non-blocking)
-verifySMTPConnection().catch(err => {
-  console.error('SMTP verification error:', err);
+// Verify SMTP connection
+transporter.verify((error, success) => {
+  if (error) {
+    console.log('❌ SMTP connection error:', error);
+  } else {
+    console.log('✅ SMTP server is ready to send emails');
+  }
 });
 
 // Email templates
@@ -342,70 +303,29 @@ app.post('/api/auth/request-otp', async (req, res) => {
       'Database query timeout'
     );
 
-    const mailOptions = {
-      from: `"ZeroOne Coding Club" <${process.env.SMTP_USER}>`,
-      to: email,
-      subject: 'Email Verification OTP - ZeroOne Coding Club ERP',
-      text: `Your email verification code is: ${otp}\n\nThis code will expire in 5 minutes.`,
-      html: getOTPEmailTemplate(otp)
-    };
 
-    // Try to send email with retry logic and port fallback
-    let emailSent = false;
-    let smtpError = null;
-
-    // Try sending with current transporter
+    // Send OTP email via SMTP
     try {
-      await withTimeout(
-        transporter.sendMail(mailOptions),
-        15000,
-        'SMTP timeout'
-      );
-      emailSent = true;
+      await transporter.sendMail({
+        from: `"ZeroOne Coding Club" <${process.env.SMTP_USER}>`,
+        to: email,
+        subject: 'Email Verification OTP - ZeroOne Coding Club ERP',
+        text: `Your email verification code is: ${otp}\n\nThis code will expire in 5 minutes.`,
+        html: getOTPEmailTemplate(otp)
+      });
       console.log(`✅ OTP email sent to ${email}`);
-    } catch (firstError) {
-      smtpError = firstError;
-      console.warn(`⚠️ SMTP send failed (port ${transporter.options.port}):`, firstError.message);
-
-      // If port 587 failed, try port 465
-      if (transporter.options.port === 587 && !transporter.options.secure) {
-        console.log('🔄 Retrying with port 465 (SSL)...');
-        try {
-          const altTransporter = createSMTPTransporter(465, true);
-          await withTimeout(
-            altTransporter.sendMail(mailOptions),
-            15000,
-            'SMTP timeout'
-          );
-          emailSent = true;
-          // Update main transporter if this works
-          transporter = altTransporter;
-          smtpWorking = true;
-          console.log(`✅ OTP email sent to ${email} (via port 465)`);
-        } catch (secondError) {
-          console.error('❌ Both SMTP ports failed:', secondError.message);
-          smtpError = secondError;
-        }
-      }
-    }
-
-    if (!emailSent) {
-      console.error('⚠️ SMTP Error (OTP still generated):', smtpError?.message || 'Unknown error');
+    } catch (emailError) {
+      console.error('⚠️ Email sending failed (OTP still generated):', emailError.message);
       console.log(`📧 OTP for ${email}: ${otp} (Email not sent - check SMTP configuration)`);
-      console.log('💡 Solutions:');
-      console.log('   1. Contact hosting provider to unblock SMTP ports (587, 465)');
-      console.log('   2. Check firewall settings');
-      console.log('   3. Verify SMTP credentials are correct');
     }
 
-    // Always return success with OTP (for testing when SMTP is down)
-    // In production, you might want to return different messages based on SMTP success
+    // Always return success with OTP
     res.json({
       success: true,
       message: 'OTP generated successfully',
       expiresIn: OTP_TTL_MS / 1000,
       // Include OTP in response for testing (remove in production)
-      ...(process.env.NODE_ENV === 'development' && { otp: otp, note: 'OTP included for testing - SMTP may be unavailable' })
+      ...(process.env.NODE_ENV === 'development' && { otp: otp, note: 'OTP included for testing' })
     });
   } catch (error) {
     console.error('Error in OTP request:', error.message);
@@ -635,15 +555,19 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     await Otp.deleteMany({ email: user.email.toLowerCase() });
     await Otp.create({ email: user.email.toLowerCase(), otp, expiresAt, attempts: 0, type: 'password-reset' });
 
-    const mailOptions = {
-      from: `"ZeroOne Coding Club" <${process.env.SMTP_USER}>`,
-      to: user.email,
-      subject: 'Password Reset OTP - ZeroOne Coding Club ERP',
-      text: `Your password reset code is: ${otp}\n\nThis code will expire in 5 minutes.`,
-      html: getPasswordResetEmailTemplate(otp)
-    };
+    try {
+      await transporter.sendMail({
+        from: `"ZeroOne Coding Club" <${process.env.SMTP_USER}>`,
+        to: user.email,
+        subject: 'Password Reset OTP - ZeroOne Coding Club ERP',
+        text: `Your password reset code is: ${otp}\n\nThis code will expire in 5 minutes.`,
+        html: getPasswordResetEmailTemplate(otp)
+      });
+    } catch (emailError) {
+      console.error('Error sending password reset email:', emailError);
+      // Continue anyway - OTP is already saved
+    }
 
-    await transporter.sendMail(mailOptions);
     res.json({ success: true, message: 'If the account exists, an OTP has been sent to the registered email', expiresIn: OTP_TTL_MS / 1000 });
   } catch (error) {
     console.error('Error sending password reset OTP:', error);
@@ -907,6 +831,13 @@ app.get('/api/submissions', authenticateToken, async (req, res) => {
 });
 
 // Upload submission
+const allowedMimeTypes = [
+  'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+];
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
@@ -914,12 +845,22 @@ const upload = multer({
     files: 1
   },
   fileFilter: (req, file, cb) => {
-    const allowedMimeTypes = [
-      'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
-      'application/pdf',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    ];
+    if (allowedMimeTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error(`File type ${file.mimetype} is not allowed. Only images, PDFs, and Word documents are allowed`), false);
+    }
+  }
+});
+
+// Separate uploader for multi-file task attachments (max 3 files)
+const attachmentsUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB per file
+    files: 3
+  },
+  fileFilter: (req, file, cb) => {
     if (allowedMimeTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
@@ -961,7 +902,7 @@ const handleMulterError = (err, req, res, next) => {
       return res.status(400).json({ error: 'File size exceeds 5MB limit' });
     }
     if (err.code === 'LIMIT_FILE_COUNT') {
-      return res.status(400).json({ error: 'Only one file is allowed' });
+      return res.status(400).json({ error: 'Too many files uploaded' });
     }
     return res.status(400).json({ error: `Upload error: ${err.message}` });
   }
@@ -1136,9 +1077,9 @@ app.put('/api/submissions/:id', authenticateToken, requireAdmin, async (req, res
 // Get user attendance
 app.get('/api/attendance', authenticateToken, async (req, res) => {
   try {
-    const sessions = await Session.find().sort({ date: -1, time: -1 });
+    const sessions = await Session.find().sort({ date: -1, startTime: -1 });
     const userAttendance = await Attendance.find({ userId: req.userId })
-      .populate({ path: 'sessionId', select: 'title description date time venue trainer', model: 'Session' })
+      .populate({ path: 'sessionId', select: 'title description date startTime venue trainer', model: 'Session' })
       .sort({ markedAt: -1 });
 
     const attendanceMap = new Map();
@@ -1159,7 +1100,7 @@ app.get('/api/attendance', authenticateToken, async (req, res) => {
         title: session.title,
         description: session.description,
         date: session.date,
-        time: session.time,
+        startTime: session.startTime,
         venue: session.venue,
         trainer: session.trainer,
         status: attendanceRecord?.status || 'absent',
@@ -1286,7 +1227,7 @@ app.get('/api/files/:filePath(*)', async (req, res) => {
     const filePath = decodeURIComponent(req.params.filePath);
     console.log('Proxy requesting file:', filePath); // Debug log
 
-    if (!filePath || (!filePath.startsWith('submissions/') && !filePath.startsWith('project-submissions/') && !filePath.startsWith('reference-files/'))) {
+    if (!filePath || (!filePath.startsWith('submissions/') && !filePath.startsWith('project-submissions/') && !filePath.startsWith('reference-files/') && !filePath.startsWith('task-attachments/'))) {
       return res.status(403).json({ error: 'Access denied' });
     }
 
@@ -1296,10 +1237,10 @@ app.get('/api/files/:filePath(*)', async (req, res) => {
     let isAdmin = false;
     let userId = null;
 
-    // Reference files are accessible to all authenticated users
+    // Reference and task attachment files are accessible to all authenticated users
     // Other files require proper authentication
-    if (filePath.startsWith('reference-files/')) {
-      // For reference files, require authentication but allow all authenticated users
+    if (filePath.startsWith('reference-files/') || filePath.startsWith('task-attachments/')) {
+      // For reference/task files, require authentication but allow all authenticated users
       if (!authHeader) {
         return res.status(401).json({ error: 'Authentication required' });
       }
@@ -1605,15 +1546,17 @@ app.post('/api/admin/students/:id/reset-password', authenticateToken, requireAdm
     await Otp.create({ email: user.email.toLowerCase(), otp, expiresAt, attempts: 0, type: 'password-reset' });
 
     // Send email
-    const mailOptions = {
-      from: `"ZeroOne Coding Club" <${process.env.SMTP_USER}>`,
-      to: user.email,
-      subject: 'Password Reset Request - ZeroOne Coding Club ERP',
-      text: `An admin has requested a password reset for your account.\n\nYour password reset code is: ${otp}\n\nThis code will expire in 5 minutes.`,
-      html: getPasswordResetEmailTemplate(otp)
-    };
-
-    await transporter.sendMail(mailOptions);
+    try {
+      await transporter.sendMail({
+        from: `"ZeroOne Coding Club" <${process.env.SMTP_USER}>`,
+        to: user.email,
+        subject: 'Password Reset Request - ZeroOne Coding Club ERP',
+        text: `An admin has requested a password reset for your account.\n\nYour password reset code is: ${otp}\n\nThis code will expire in 5 minutes.`,
+        html: getPasswordResetEmailTemplate(otp)
+      });
+    } catch (emailError) {
+      console.error('Error sending admin password reset email:', emailError);
+    }
 
     res.json({ success: true, message: 'Password reset email sent to student' });
   } catch (error) {
@@ -2164,6 +2107,186 @@ app.put('/api/project-submissions/:id', authenticateToken, requireAdmin, async (
   }
 });
 
+// ========== TASK ROUTES ==========
+
+const sanitizeTaskAttachments = (attachments) => {
+  if (!Array.isArray(attachments)) return [];
+  return attachments
+    .map(file => typeof file === 'string' ? file.trim() : null)
+    .filter(file => file && (file.startsWith('task-attachments/') || file.startsWith('reference-files/')));
+};
+
+// Fetch tasks (students see only active, admins see all)
+app.get('/api/tasks', authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId);
+    if (!user) {
+      return res.status(401).json({ error: 'User not found' });
+    }
+    const isAdmin = user?.role?.toUpperCase() === 'ADMIN';
+    const filter = isAdmin ? {} : { isActive: true };
+
+    const tasks = await Task.find(filter)
+      .populate({ path: 'createdBy', select: 'studentFullName name email role' })
+      .sort({ createdAt: -1 });
+
+    res.json({ success: true, tasks });
+  } catch (error) {
+    console.error('Error fetching tasks:', error);
+    res.status(500).json({ error: 'Failed to fetch tasks' });
+  }
+});
+
+// Upload task attachments (admin only)
+app.post('/api/tasks/attachments', authenticateToken, requireAdmin, attachmentsUpload.array('files', 3), handleMulterError, async (req, res) => {
+  try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ error: 'No files provided' });
+    }
+
+    if (!r2Client || !R2_BUCKET_NAME) {
+      return res.status(503).json({
+        error: 'File upload service is not configured. Please contact administrator.',
+        details: 'R2 storage not properly configured'
+      });
+    }
+
+    const uploadedFiles = [];
+
+    for (const file of req.files) {
+      const fileExtension = file.originalname.split('.').pop().toLowerCase();
+      const uniqueFileName = `task-attachments/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
+
+      let contentType = file.mimetype;
+      if (!contentType || contentType === 'application/octet-stream') {
+        const mimeTypes = {
+          'pdf': 'application/pdf',
+          'doc': 'application/msword',
+          'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'jpg': 'image/jpeg',
+          'jpeg': 'image/jpeg',
+          'png': 'image/png',
+          'gif': 'image/gif',
+          'webp': 'image/webp',
+          'svg': 'image/svg+xml',
+          'zip': 'application/zip',
+          'txt': 'text/plain'
+        };
+        contentType = mimeTypes[fileExtension] || 'application/octet-stream';
+      }
+
+      if (!file.buffer || file.buffer.length === 0) {
+        return res.status(400).json({ error: `File ${file.originalname} is empty or corrupted` });
+      }
+
+      try {
+        await withTimeout(
+          r2Client.send(new PutObjectCommand({
+            Bucket: R2_BUCKET_NAME,
+            Key: uniqueFileName,
+            Body: file.buffer,
+            ContentType: contentType,
+            Metadata: {
+              'original-name': file.originalname,
+              'upload-date': new Date().toISOString()
+            }
+          })),
+          30000,
+          'R2 upload timeout'
+        );
+        uploadedFiles.push(uniqueFileName);
+      } catch (r2Error) {
+        console.error(`Failed to upload task attachment ${file.originalname}:`, r2Error);
+        return res.status(500).json({
+          error: `Failed to upload file: ${file.originalname}`,
+          details: r2Error.message
+        });
+      }
+    }
+
+    res.status(201).json({
+      success: true,
+      message: 'Attachments uploaded successfully',
+      files: uploadedFiles
+    });
+  } catch (error) {
+    console.error('Error uploading task attachments:', error);
+    res.status(500).json({
+      error: 'Failed to upload attachments',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// Create task (admin only)
+app.post('/api/tasks', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { title, content, isActive, attachments } = req.body;
+
+    if (!title || !content) {
+      return res.status(400).json({ error: 'Title and content are required' });
+    }
+
+    const sanitizedAttachments = sanitizeTaskAttachments(attachments);
+
+    const task = await Task.create({
+      title: title.trim(),
+      content: content.trim(),
+      isActive: isActive !== undefined ? isActive : true,
+      attachments: sanitizedAttachments,
+      createdBy: req.userId
+    });
+
+    await task.populate({ path: 'createdBy', select: 'studentFullName name email role' });
+
+    res.status(201).json({ success: true, message: 'Task created successfully', task });
+  } catch (error) {
+    console.error('Error creating task:', error);
+    res.status(500).json({ error: 'Failed to create task' });
+  }
+});
+
+// Update task (admin only)
+app.put('/api/tasks/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { title, content, isActive, attachments } = req.body;
+    const task = await Task.findById(req.params.id);
+
+    if (!task) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+
+    if (title !== undefined) task.title = title;
+    if (content !== undefined) task.content = content;
+    if (isActive !== undefined) task.isActive = isActive;
+    if (attachments !== undefined) {
+      task.attachments = sanitizeTaskAttachments(attachments);
+    }
+
+    await task.save();
+    await task.populate({ path: 'createdBy', select: 'studentFullName name email role' });
+
+    res.json({ success: true, message: 'Task updated successfully', task });
+  } catch (error) {
+    console.error('Error updating task:', error);
+    res.status(500).json({ error: 'Failed to update task' });
+  }
+});
+
+// Delete task (admin only)
+app.delete('/api/tasks/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const deleted = await Task.findByIdAndDelete(req.params.id);
+    if (!deleted) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+    res.json({ success: true, message: 'Task deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting task:', error);
+    res.status(500).json({ error: 'Failed to delete task' });
+  }
+});
+
 // ========== QUERY ROUTES ==========
 
 // Get user queries (or all for admin)
@@ -2346,17 +2469,18 @@ app.post('/test-email-send', async (req, res) => {
   const { to } = req.body;
   const testEmail = to || process.env.SMTP_USER;
 
-  if (!testEmail || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    return res.status(400).json({ error: 'Email address and SMTP credentials required' });
+  if (!testEmail) {
+    return res.status(400).json({ error: 'Email address required' });
   }
 
   try {
     const testOTP = Math.floor(100000 + Math.random() * 900000).toString();
-    const mailOptions = {
+
+    const info = await transporter.sendMail({
       from: `"ZeroOne Coding Club" <${process.env.SMTP_USER}>`,
       to: testEmail,
       subject: '🧪 Test Email - ZeroOne Coding Club ERP',
-      text: `This is a test email from ZeroOne Coding Club ERP.\n\nTest OTP: ${testOTP}\n\nIf you received this email, your Outlook SMTP configuration is working correctly!`,
+      text: `This is a test email from ZeroOne Coding Club ERP.\n\nTest OTP: ${testOTP}\n\nIf you received this email, your SMTP configuration is working correctly!`,
       html: `
         <!DOCTYPE html>
         <html>
@@ -2373,22 +2497,18 @@ app.post('/test-email-send', async (req, res) => {
                 <p style="color: #4f9cff; font-size: 16px; margin: 0;">Test OTP Code:</p>
                 <h2 style="color: #4f9cff; font-size: 36px; letter-spacing: 8px; margin: 10px 0 0 0; font-weight: bold; font-family: 'Courier New', monospace;">${testOTP}</h2>
               </div>
-              <p style="margin: 20px 0 0 0; font-size: 14px; color: #e0e0e0; text-align: center;">If you received this email, your Outlook SMTP configuration is working correctly! 🎉</p>
+              <p style="margin: 20px 0 0 0; font-size: 14px; color: #e0e0e0; text-align: center;">If you received this email, your SMTP configuration is working correctly! 🎉</p>
             </div>
           </div>
         </body>
         </html>
       `
-    };
+    });
 
-    const info = await withTimeout(transporter.sendMail(mailOptions), 15000, 'SMTP timeout');
     res.json({ success: true, message: 'Test email sent successfully!', to: testEmail, messageId: info.messageId, testOTP });
   } catch (error) {
     console.error('Test email error:', error);
-    let errorMessage = 'Failed to send test email.';
-    if (error.code === 'EAUTH' || error.responseCode === 535) errorMessage = 'Outlook authentication failed.';
-    else if (error.code === 'ECONNECTION' || error.code === 'ETIMEDOUT' || error.message === 'SMTP timeout') errorMessage = 'Connection to Outlook server failed.';
-    res.status(500).json({ success: false, error: errorMessage, details: { code: error.code, message: error.message } });
+    res.status(500).json({ success: false, error: 'Failed to send test email via SMTP', details: { message: error.message } });
   }
 });
 

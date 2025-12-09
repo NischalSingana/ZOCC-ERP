@@ -1322,6 +1322,15 @@ app.get('/api/admin/sessions/:sessionId/attendance', authenticateToken, requireA
 
 // ========== FILE ROUTES ==========
 
+// Handle CORS preflight for file downloads
+app.options('/api/files/*', (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+  res.setHeader('Access-Control-Max-Age', '86400'); // 24 hours
+  res.status(200).end();
+});
+
 app.get('/api/files/:filePath(*)', async (req, res) => {
   try {
     if (!r2Client || !process.env.R2_BUCKET_NAME) {

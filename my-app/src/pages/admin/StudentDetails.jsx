@@ -15,6 +15,7 @@ const StudentDetails = () => {
     studentFullName: '',
     email: '',
     phone: '',
+    photo: '',
     role: 'STUDENT',
     emailVerified: false,
   });
@@ -39,6 +40,7 @@ const StudentDetails = () => {
           studentFullName: userData.studentFullName || '',
           email: userData.email || '',
           phone: userData.phone || '',
+          photo: userData.photo || '',
           role: userData.role || 'STUDENT',
           emailVerified: userData.emailVerified || false,
         });
@@ -141,6 +143,23 @@ const StudentDetails = () => {
                 Edit
               </button>
             )}
+          </div>
+        </div>
+
+        {/* Profile Photo */}
+        <div className="mb-6 flex justify-center">
+          <div className="relative group">
+            <div className="w-32 h-32 rounded-full bg-gradient-to-br from-zocc-blue-600 to-zocc-blue-700 flex items-center justify-center text-5xl font-bold text-white overflow-hidden ring-4 ring-zocc-blue-500/30">
+              {studentData.photo ? (
+                <img
+                  src={studentData.photo}
+                  alt={studentData.studentFullName}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                (studentData.studentFullName || studentData.email || 'U').charAt(0).toUpperCase()
+              )}
+            </div>
           </div>
         </div>
 

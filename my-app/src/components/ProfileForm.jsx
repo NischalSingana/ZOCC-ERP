@@ -67,11 +67,23 @@ const ProfileForm = ({ user, onUpdate }) => {
 
       // Upload photo if selected
       if (photo) {
-        const formDataPhoto = new FormData();
-        formDataPhoto.append('photo', photo);
-        // Assuming you have a photo upload endpoint
-        // await axiosInstance.post('/api/users/me/photo', formDataPhoto);
-        showToast.success('Photo upload will be implemented soon');
+        try {
+          const formDataPhoto = new FormData();
+          formDataPhoto.append('photo', photo);
+          const photoResponse = await axiosInstance.post('/api/users/me/photo', formDataPhoto, {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+          });
+
+          if (photoResponse.data?.user) {
+            updateUser(photoResponse.data.user);
+            showToast.success('Profile photo updated successfully!');
+          }
+        } catch (error) {
+          const errorMessage = error.response?.data?.error || 'Failed to upload photo';
+          showToast.error(errorMessage);
+        }
       }
 
       // Update password if provided

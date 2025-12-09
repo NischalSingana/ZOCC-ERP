@@ -1701,6 +1701,69 @@ app.put('/api/users/me/password', authenticateToken, async (req, res) => {
   }
 });
 
+// Upload profile photo
+app.post('/api/users/me/photo', authenticateToken, upload.single('photo'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No photo file provided' });
+    }
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(req.file.mimetype)) {
+      return res.status(400).json({ error: 'Invalid file type. Only JPEG, PNG, and WebP images are allowed' });
+    }
+
+    // Validate file size (max 5MB)
+    if (req.file.size > 5 * 1024 * 1024) {
+      return res.status(400).json({ error: 'File too large. Maximum size is 5MB' });
+    }
+
+    const fileExtension = req.file.originalname.split('.').pop().toLowerCase();
+    const uniqueFileName = `profile-photos/${req.userId}/${Date.now()}.${fileExtension}`;
+
+    console.log(`📤 Uploading profile photo to R2: ${uniqueFileName}`);
+
+    // Upload to R2
+    await r2Client.send(new PutObjectCommand({
+      Bucket: R2_BUCKET_NAME,
+      Key: uniqueFileName,
+      Body: req.file.buffer,
+      ContentType: req.file.mimetype,
+    }));
+
+    console.log(`✅ Profile photo uploaded successfully`);
+
+    // Generate public URL
+    const photoUrl = `${R2_PUBLIC_URL}/${uniqueFileName}`;
+
+    // Update user's photo URL in database
+    const user = await User.findById(req.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    user.photo = photoUrl;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Profile photo uploaded successfully',
+      photoUrl: photoUrl,
+      user: {
+        id: user._id,
+        studentFullName: user.studentFullName,
+        email: user.email,
+        photo: user.photo,
+        role: user.role
+      }
+    });
+  } catch (error) {
+    console.error('Error uploading profile photo:', error);
+    res.status(500).json({ error: 'Failed to upload profile photo' });
+  }
+});
+
 // Get single user
 app.get('/api/users/:id', authenticateToken, async (req, res) => {
   try {

@@ -1612,6 +1612,7 @@ app.get('/api/users/me', authenticateToken, async (req, res) => {
         role: user.role || 'STUDENT',
         emailVerified: user.emailVerified,
         phone: user.phone,
+        photo: user.photo,
         createdAt: user.createdAt,
         lastLogin: user.lastLogin
       }
@@ -1651,7 +1652,8 @@ app.put('/api/users/me', authenticateToken, async (req, res) => {
         email: user.email,
         role: user.role || 'STUDENT',
         emailVerified: user.emailVerified,
-        phone: user.phone
+        phone: user.phone,
+        photo: user.photo
       }
     });
   } catch (error) {

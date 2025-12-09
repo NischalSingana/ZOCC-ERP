@@ -1829,6 +1829,21 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating user:', error);
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    if (error.errors) {
+      console.error('Validation errors:', JSON.stringify(error.errors, null, 2));
+    }
+
+    // Return validation errors if available
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: validationErrors
+      });
+    }
+
     res.status(500).json({ error: 'Failed to update user' });
   }
 });

@@ -1809,7 +1809,11 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
     if (phone !== undefined) targetUser.phone = phone || null;
     if (requestingUser.role === 'ADMIN') {
       if (idNumber !== undefined) {
-        targetUser.idNumber = idNumber || null;
+        // Only update if it's different from current value to avoid duplicate key error
+        const newIdNumber = idNumber || null;
+        if (newIdNumber !== targetUser.idNumber) {
+          targetUser.idNumber = newIdNumber;
+        }
       }
     }
     await targetUser.save();

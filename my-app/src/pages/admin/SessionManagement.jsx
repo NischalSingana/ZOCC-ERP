@@ -20,7 +20,6 @@ const SessionManagement = () => {
     endMinute: '',
     endPeriod: 'AM',
     venue: '',
-    trainer: '',
     joinLink: '',
   });
 
@@ -90,7 +89,6 @@ const SessionManagement = () => {
           endMinute: '',
           endPeriod: 'AM',
           venue: '',
-          trainer: '',
           joinLink: '',
         });
         fetchSessions();
@@ -151,7 +149,6 @@ const SessionManagement = () => {
       endMinute: endTime.minute,
       endPeriod: endTime.period,
       venue: session.venue || '',
-      trainer: session.trainer || '',
       joinLink: session.joinLink || '',
     });
     setShowForm(true);
@@ -173,12 +170,7 @@ const SessionManagement = () => {
     {
       key: 'venue',
       header: 'Venue',
-      headerClassName: 'w-[15%]'
-    },
-    {
-      key: 'trainer',
-      header: 'Trainer',
-      headerClassName: 'w-[20%]'
+      headerClassName: 'w-[25%]'
     },
     {
       key: 'actions',
@@ -229,7 +221,6 @@ const SessionManagement = () => {
               endMinute: '',
               endPeriod: 'AM',
               venue: '',
-              trainer: '',
               joinLink: '',
             });
           }}
@@ -350,17 +341,6 @@ const SessionManagement = () => {
                     <option value="PM">PM</option>
                   </select>
                 </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-zocc-blue-300 mb-2">
-                  Trainer
-                </label>
-                <input
-                  type="text"
-                  value={formData.trainer}
-                  onChange={(e) => setFormData({ ...formData, trainer: e.target.value })}
-                  className="w-full px-4 py-2 bg-zocc-blue-800/50 border border-zocc-blue-700/30 rounded-lg text-white"
-                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-zocc-blue-300 mb-2">

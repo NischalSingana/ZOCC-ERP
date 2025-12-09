@@ -4,7 +4,6 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { API_URL } from '../utils/apiUrl';
 
 const Attendance = () => {
-  const [selectedPeriod, setSelectedPeriod] = useState('month');
   const [attendanceData, setAttendanceData] = useState([]);
   const [recentSessions, setRecentSessions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -76,7 +75,6 @@ const Attendance = () => {
             <div className="p-3 rounded-lg bg-green-500/10">
               <CheckCircle className="text-green-400" size={24} />
             </div>
-            <span className="text-green-400 text-sm font-medium">+5%</span>
           </div>
           <h3 className="text-sm text-zocc-blue-300 mb-1">Total Present</h3>
           <p className="text-3xl font-bold text-white">{presentCount}</p>
@@ -87,7 +85,6 @@ const Attendance = () => {
             <div className="p-3 rounded-lg bg-red-500/10">
               <XCircle className="text-red-400" size={24} />
             </div>
-            <span className="text-red-400 text-sm font-medium">-12%</span>
           </div>
           <h3 className="text-sm text-zocc-blue-300 mb-1">Total Absent</h3>
           <p className="text-3xl font-bold text-white">{totalSessions - presentCount}</p>
@@ -98,7 +95,6 @@ const Attendance = () => {
             <div className="p-3 rounded-lg bg-blue-500/10">
               <TrendingUp className="text-blue-400" size={24} />
             </div>
-            <span className="text-green-400 text-sm font-medium">+8%</span>
           </div>
           <h3 className="text-sm text-zocc-blue-300 mb-1">Attendance Rate</h3>
           <p className="text-3xl font-bold text-white">{attendanceRate}%</p>
@@ -111,28 +107,21 @@ const Attendance = () => {
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2">
               <CalendarCheck className="text-zocc-blue-400" size={24} />
-              <h2 className="text-xl font-semibold text-white">Attendance Trend</h2>
-            </div>
-            <div className="flex gap-2">
-              {['week', 'month', 'year'].map((period) => (
-                <button
-                  key={period}
-                  onClick={() => setSelectedPeriod(period)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${selectedPeriod === period
-                    ? 'bg-zocc-blue-600 text-white'
-                    : 'bg-zocc-blue-800/30 text-zocc-blue-300 hover:bg-zocc-blue-800/50'
-                    }`}
-                >
-                  {period.toUpperCase()}
-                </button>
-              ))}
+              <h2 className="text-xl font-semibold text-white">Attendance Overview</h2>
             </div>
           </div>
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={attendanceData}>
+            <BarChart data={attendanceData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1e3a5f" />
-              <XAxis dataKey="date" stroke="#93c5fd" />
-              <YAxis stroke="#93c5fd" />
+              <XAxis
+                dataKey="date"
+                stroke="#93c5fd"
+                tick={{ fill: '#93c5fd' }}
+              />
+              <YAxis
+                stroke="#93c5fd"
+                tick={{ fill: '#93c5fd' }}
+              />
               <Tooltip
                 contentStyle={{
                   backgroundColor: '#0b2447',
@@ -140,11 +129,25 @@ const Attendance = () => {
                   borderRadius: '8px',
                   color: '#fff'
                 }}
+                cursor={{ fill: 'rgba(79, 156, 255, 0.1)' }}
               />
-              <Legend wrapperStyle={{ color: '#fff' }} />
-              <Line type="monotone" dataKey="present" stroke="#10b981" strokeWidth={2} dot={{ fill: '#10b981' }} name="Present" />
-              <Line type="monotone" dataKey="absent" stroke="#ef4444" strokeWidth={2} dot={{ fill: '#ef4444' }} name="Absent" />
-            </LineChart>
+              <Legend
+                wrapperStyle={{ color: '#fff' }}
+                iconType="circle"
+              />
+              <Bar
+                dataKey="present"
+                fill="#10b981"
+                name="Present"
+                radius={[8, 8, 0, 0]}
+              />
+              <Bar
+                dataKey="absent"
+                fill="#ef4444"
+                name="Absent"
+                radius={[8, 8, 0, 0]}
+              />
+            </BarChart>
           </ResponsiveContainer>
         </div>
       )}
@@ -156,33 +159,35 @@ const Attendance = () => {
           <h2 className="text-xl font-semibold text-white">Recent Sessions</h2>
         </div>
         {recentSessions.length === 0 ? (
-          <div className="text-center py-8 text-zocc-blue-300">
-            No attendance records found.
+          <div className="text-center py-12">
+            <Clock size={48} className="text-zocc-blue-400 mx-auto mb-4" />
+            <p className="text-zocc-blue-300 text-lg">No attendance records found.</p>
+            <p className="text-zocc-blue-400 text-sm mt-2">Your attendance will appear here once sessions are marked.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full table-auto">
               <thead>
                 <tr className="border-b border-zocc-blue-700/30">
                   <th className="text-left py-3 px-4 text-sm font-semibold text-zocc-blue-300">Session</th>
                   <th className="text-left py-3 px-4 text-sm font-semibold text-zocc-blue-300">Date</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-zocc-blue-300">Trainer</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-zocc-blue-300">Venue</th>
                   <th className="text-left py-3 px-4 text-sm font-semibold text-zocc-blue-300">Status</th>
                 </tr>
               </thead>
               <tbody>
                 {recentSessions.slice(0, 10).map((session, idx) => (
                   <tr key={session.sessionId || idx} className="border-b border-zocc-blue-700/10 hover:bg-zocc-blue-800/20 transition-colors">
-                    <td className="py-3 px-4 text-white font-medium">{session.title}</td>
-                    <td className="py-3 px-4 text-zocc-blue-300">
+                    <td className="py-3 px-4 text-left text-white font-medium">{session.title}</td>
+                    <td className="py-3 px-4 text-left text-zocc-blue-300">
                       {session.date ? new Date(session.date).toLocaleDateString('en-US', {
                         year: 'numeric',
                         month: 'short',
                         day: 'numeric'
                       }) : 'N/A'}
                     </td>
-                    <td className="py-3 px-4 text-zocc-blue-300">{session.trainer || 'N/A'}</td>
-                    <td className="py-3 px-4">
+                    <td className="py-3 px-4 text-left text-zocc-blue-300">{session.venue || 'N/A'}</td>
+                    <td className="py-3 px-4 text-left">
                       {(() => {
                         const status = session.status?.toLowerCase() || 'absent';
                         return (

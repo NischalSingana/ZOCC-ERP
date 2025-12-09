@@ -49,14 +49,32 @@ const RegisteredStudents = () => {
 
   const columns = [
     {
+      key: 'photo',
+      header: 'Photo',
+      headerClassName: 'w-[8%]',
+      render: (student) => (
+        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-zocc-blue-600 to-zocc-blue-700 flex items-center justify-center text-sm font-bold text-white overflow-hidden ring-2 ring-zocc-blue-500/30">
+          {student.photo ? (
+            <img
+              src={student.photo}
+              alt={student.studentFullName}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            (student.studentFullName || student.email || 'U').charAt(0).toUpperCase()
+          )}
+        </div>
+      ),
+    },
+    {
       key: 'idNumber',
       header: 'ID Number',
-      headerClassName: 'w-[15%]'
+      headerClassName: 'w-[12%]'
     },
     {
       key: 'studentFullName',
       header: 'Name',
-      headerClassName: 'w-[18%]',
+      headerClassName: 'w-[15%]',
       cellClassName: 'break-words'
     },
     {
@@ -78,8 +96,8 @@ const RegisteredStudents = () => {
       render: (student) => (
         <span
           className={`px-2 py-1 rounded text-xs whitespace-nowrap inline-block ${student.emailVerified
-              ? 'bg-green-500/20 text-green-400'
-              : 'bg-yellow-500/20 text-yellow-400'
+            ? 'bg-green-500/20 text-green-400'
+            : 'bg-yellow-500/20 text-yellow-400'
             }`}
         >
           {student.emailVerified ? 'Verified' : 'Pending'}

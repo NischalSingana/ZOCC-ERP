@@ -151,15 +151,7 @@ const StudentDetails = () => {
         <div className="mb-6 flex justify-center">
           <div className="relative group">
             <div className="w-32 h-32 rounded-full bg-gradient-to-br from-zocc-blue-600 to-zocc-blue-700 flex items-center justify-center text-5xl font-bold text-white overflow-hidden ring-4 ring-zocc-blue-500/30">
-              {studentData.photo ? (
-                <img
-                  src={studentData.photo}
-                  alt={studentData.studentFullName}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                (studentData.studentFullName || studentData.email || 'U').charAt(0).toUpperCase()
-              )}
+              {(studentData.studentFullName || studentData.email || 'U').charAt(0).toUpperCase()}
             </div>
           </div>
         </div>

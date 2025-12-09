@@ -19,11 +19,7 @@ const Profile = () => {
           {/* Profile Picture */}
           <div className="relative group">
             <div className="w-32 h-32 rounded-full bg-gradient-to-br from-zocc-blue-600 to-zocc-blue-700 flex items-center justify-center text-5xl font-bold text-white overflow-hidden ring-4 ring-zocc-blue-500/30">
-              {user.photo ? (
-                <img src={user.photo} alt={user.studentFullName} className="w-full h-full object-cover" />
-              ) : (
-                (user.studentFullName || user.email || 'U').charAt(0).toUpperCase()
-              )}
+              {(user.studentFullName || user.email || 'U').charAt(0).toUpperCase()}
             </div>
           </div>
 

@@ -262,17 +262,9 @@ const Navbar = ({ onMenuClick, sidebarOpen }) => {
             className="flex items-center gap-2 p-1 rounded-lg hover:bg-primary-800 transition-colors"
           >
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-zocc-blue-600 to-zocc-blue-700 flex items-center justify-center overflow-hidden ring-2 ring-zocc-blue-500/30">
-              {user?.photo ? (
-                <img
-                  src={user.photo}
-                  alt={userName}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <span className="text-white font-semibold text-sm">
-                  {userName.charAt(0).toUpperCase()}
-                </span>
-              )}
+              <span className="text-white font-semibold text-sm">
+                {userName.charAt(0).toUpperCase()}
+              </span>
             </div>
             <ChevronDown
               size={16}

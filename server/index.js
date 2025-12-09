@@ -616,6 +616,21 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
+// Logout endpoint
+app.post('/api/auth/logout', authenticateToken, async (req, res) => {
+  try {
+    // In a stateless JWT system, logout is handled client-side by removing the token
+    // But we can log the logout event or perform cleanup if needed
+    res.json({
+      success: true,
+      message: 'Logout successful'
+    });
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({ error: 'Logout failed' });
+  }
+});
+
 // Forgot password - Request OTP
 app.post('/api/auth/forgot-password', async (req, res) => {
   try {

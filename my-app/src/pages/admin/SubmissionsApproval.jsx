@@ -136,7 +136,10 @@ const SubmissionsApproval = () => {
       }
 
       // Always use the proxy endpoint with the key for reliable downloads
-      const downloadUrl = `${API_URL}/api/files/${encodeURIComponent(fileKey)}`;
+      let downloadUrl = `${API_URL}/api/files/${encodeURIComponent(fileKey)}`;
+      // Fix any double slashes in the URL (in case API_URL has trailing slash)
+      downloadUrl = downloadUrl.replace(/([^:]\/)\/+/g, '$1');
+
       const token = localStorage.getItem('authToken');
 
       // Always include Authorization header for admin downloads
@@ -221,6 +224,8 @@ const SubmissionsApproval = () => {
       // Use backend proxy with authentication
       const token = localStorage.getItem('authToken');
       fileUrl = `${API_URL}/api/files/${encodeURIComponent(fileUrl)}`;
+      // Fix any double slashes in the URL
+      fileUrl = fileUrl.replace(/([^:]\/)\/+/g, '$1');
       // For image viewing, we need to append token as query param since img src can't have headers
       if (token) {
         fileUrl += `?token=${token}`;

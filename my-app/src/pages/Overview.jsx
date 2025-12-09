@@ -13,8 +13,8 @@ const Overview = () => {
   const [stats, setStats] = useState({
     sessionsAttended: 0,
     submissionsMade: 0,
-    projectsJoined: 0,
-    leaderboardRank: null
+    tasksCompleted: 0,
+    attendancePercentage: 0
   });
   const [upcomingSessions, setUpcomingSessions] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
@@ -36,7 +36,10 @@ const Overview = () => {
         }
       });
       const attendanceData = attendanceRes.ok ? await attendanceRes.json() : { attendance: [] };
-      const presentCount = attendanceData.attendance?.filter(a => a.status?.toLowerCase() === 'present').length || 0;
+      const allAttendance = attendanceData.attendance || [];
+      const presentCount = allAttendance.filter(a => a.status?.toLowerCase() === 'present').length || 0;
+      const totalSessions = allAttendance.length || 0;
+      const attendancePercentage = totalSessions > 0 ? Math.round((presentCount / totalSessions) * 100) : 0;
 
       // Fetch submissions data
       const submissionsRes = await fetch(`${API_URL}/api/submissions`, {
@@ -46,6 +49,23 @@ const Overview = () => {
       });
       const submissionsData = submissionsRes.ok ? await submissionsRes.json() : { submissions: [] };
       const submissionsCount = submissionsData.submissions?.length || 0;
+
+      // Fetch tasks data
+      let tasksCompletedCount = 0;
+      try {
+        const tasksRes = await fetch(`${API_URL}/api/tasks`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (tasksRes.ok) {
+          const tasksData = await tasksRes.json();
+          const allTasks = tasksData.tasks || tasksData.data || [];
+          tasksCompletedCount = allTasks.filter(task => task.status?.toLowerCase() === 'completed').length || 0;
+        }
+      } catch (error) {
+        console.log('Tasks endpoint not available');
+      }
 
       // Fetch sessions data
       const sessionsRes = await fetch(`${API_URL}/api/sessions`, {
@@ -73,18 +93,18 @@ const Overview = () => {
         })
         .slice(0, 3)
         .map(session => {
-          const startTime = session.startTime 
+          const startTime = session.startTime
             ? new Date(session.startTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
             : null;
-          const endTime = session.endTime 
+          const endTime = session.endTime
             ? new Date(session.endTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
             : null;
-          const timeDisplay = startTime && endTime 
+          const timeDisplay = startTime && endTime
             ? `${startTime} - ${endTime}`
-            : startTime 
-            ? startTime
-            : 'TBA';
-          
+            : startTime
+              ? startTime
+              : 'TBA';
+
           return {
             title: session.title || 'Untitled Session',
             date: session.date,
@@ -113,8 +133,8 @@ const Overview = () => {
       setStats({
         sessionsAttended: presentCount,
         submissionsMade: submissionsCount,
-        projectsJoined: 0, // Projects feature not implemented yet
-        leaderboardRank: null // Leaderboard feature not implemented yet
+        tasksCompleted: tasksCompletedCount,
+        attendancePercentage: attendancePercentage
       });
 
       setUpcomingSessions(upcoming);
@@ -143,16 +163,16 @@ const Overview = () => {
       bgColor: 'bg-green-500/10'
     },
     {
-      title: 'Projects Joined',
-      value: stats.projectsJoined.toString(),
+      title: 'Tasks Completed',
+      value: stats.tasksCompleted.toString(),
       change: '',
       icon: FolderKanban,
       color: 'text-purple-400',
       bgColor: 'bg-purple-500/10'
     },
     {
-      title: 'Leaderboard Rank',
-      value: stats.leaderboardRank ? `#${stats.leaderboardRank}` : 'N/A',
+      title: 'Attendance',
+      value: `${stats.attendancePercentage}%`,
       change: '',
       icon: TrendingUp,
       color: 'text-yellow-400',
@@ -253,7 +273,7 @@ const Overview = () => {
                     authorName = createdBy.studentFullName || createdBy.name || createdBy.email || 'Admin';
                   }
                 }
-                
+
                 return (
                   <div
                     key={announcement.id || announcement._id || idx}

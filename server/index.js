@@ -1336,7 +1336,15 @@ app.get('/api/files/:filePath(*)', async (req, res) => {
     }
 
     // Authentication and authorization check
-    const authHeader = req.headers['authorization'];
+    // Support both Authorization header and query parameter token (for img src)
+    let authHeader = req.headers['authorization'];
+    const queryToken = req.query.token;
+
+    // If no auth header but query token exists, construct auth header
+    if (!authHeader && queryToken) {
+      authHeader = `Bearer ${queryToken}`;
+    }
+
     let isAuthenticated = false;
     let isAdmin = false;
     let userId = null;

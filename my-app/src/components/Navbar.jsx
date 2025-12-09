@@ -13,33 +13,114 @@ const Navbar = ({ onMenuClick, sidebarOpen }) => {
 
   const userName = user?.studentFullName || user?.email || 'User';
 
-  // Mock notifications - replace with real data from API
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      title: 'New Announcement',
-      message: 'Check out the latest announcement about upcoming sessions',
-      time: '2 hours ago',
-      read: false,
-      type: 'announcement',
-    },
-    {
-      id: 2,
-      title: 'Submission Reviewed',
-      message: 'Your submission has been reviewed and accepted',
-      time: '1 day ago',
-      read: false,
-      type: 'submission',
-    },
-    {
-      id: 3,
-      title: 'New Session',
-      message: 'A new session has been scheduled for next week',
-      time: '2 days ago',
-      read: true,
-      type: 'session',
-    },
-  ]);
+  const [notifications, setNotifications] = useState([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(true);
+
+  // Fetch real notifications
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        setNotificationsLoading(true);
+        const token = localStorage.getItem('authToken');
+
+        // Fetch recent announcements, sessions, and tasks in parallel
+        const [announcementsRes, sessionsRes, tasksRes] = await Promise.all([
+          fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/announcements`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }),
+          fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/sessions`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }),
+          fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/tasks`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          })
+        ]);
+
+        const notificationsList = [];
+
+        // Process announcements
+        if (announcementsRes.ok) {
+          const data = await announcementsRes.json();
+          const recentAnnouncements = (data.announcements || []).slice(0, 3);
+          recentAnnouncements.forEach(announcement => {
+            const createdDate = new Date(announcement.createdAt);
+            const now = new Date();
+            const diffHours = Math.floor((now - createdDate) / (1000 * 60 * 60));
+
+            notificationsList.push({
+              id: `announcement-${announcement._id}`,
+              title: 'New Announcement',
+              message: announcement.title,
+              time: diffHours < 24 ? `${diffHours} hours ago` : `${Math.floor(diffHours / 24)} days ago`,
+              read: false,
+              type: 'announcement'
+            });
+          });
+        }
+
+        // Process upcoming sessions
+        if (sessionsRes.ok) {
+          const data = await sessionsRes.json();
+          const upcomingSessions = (data.sessions || [])
+            .filter(session => new Date(session.date) > new Date())
+            .slice(0, 2);
+
+          upcomingSessions.forEach(session => {
+            const sessionDate = new Date(session.date);
+            const now = new Date();
+            const diffDays = Math.ceil((sessionDate - now) / (1000 * 60 * 60 * 24));
+
+            notificationsList.push({
+              id: `session-${session._id}`,
+              title: 'Upcoming Session',
+              message: `${session.title} - ${diffDays} day${diffDays > 1 ? 's' : ''} away`,
+              time: `Scheduled for ${sessionDate.toLocaleDateString()}`,
+              read: false,
+              type: 'session'
+            });
+          });
+        }
+
+        // Process pending tasks
+        if (tasksRes.ok) {
+          const data = await tasksRes.json();
+          const pendingTasks = (data.tasks || [])
+            .filter(task => task.status !== 'completed')
+            .slice(0, 2);
+
+          pendingTasks.forEach(task => {
+            const dueDate = new Date(task.dueDate);
+            const now = new Date();
+            const diffDays = Math.ceil((dueDate - now) / (1000 * 60 * 60 * 24));
+
+            notificationsList.push({
+              id: `task-${task._id}`,
+              title: 'Pending Task',
+              message: task.title,
+              time: diffDays > 0 ? `Due in ${diffDays} day${diffDays > 1 ? 's' : ''}` : 'Overdue',
+              read: false,
+              type: 'task'
+            });
+          });
+        }
+
+        // Sort by most recent
+        setNotifications(notificationsList.slice(0, 5));
+      } catch (error) {
+        console.error('Error fetching notifications:', error);
+        setNotifications([]);
+      } finally {
+        setNotificationsLoading(false);
+      }
+    };
+
+    if (user) {
+      fetchNotifications();
+      // Refresh notifications every 5 minutes
+      const interval = setInterval(fetchNotifications, 5 * 60 * 1000);
+      return () => clearInterval(interval);
+    }
+  }, [user]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -74,6 +155,8 @@ const Navbar = ({ onMenuClick, sidebarOpen }) => {
       navigate('/dashboard/submissions');
     } else if (notification.type === 'session') {
       navigate('/dashboard/sessions');
+    } else if (notification.type === 'task') {
+      navigate('/dashboard/tasks');
     }
     setShowNotifications(false);
   };
@@ -218,16 +301,6 @@ const Navbar = ({ onMenuClick, sidebarOpen }) => {
                 >
                   <User size={18} />
                   <span>Profile</span>
-                </button>
-                <button
-                  onClick={() => {
-                    navigate('/dashboard/profile');
-                    setShowProfileMenu(false);
-                  }}
-                  className="w-full flex items-center gap-3 px-4 py-2 text-left text-primary-200 hover:bg-primary-800 transition-colors"
-                >
-                  <Settings size={18} />
-                  <span>Settings</span>
                 </button>
               </div>
               <div className="border-t border-primary-800 py-2">

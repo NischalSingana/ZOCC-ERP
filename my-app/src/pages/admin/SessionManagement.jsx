@@ -13,6 +13,7 @@ const SessionManagement = () => {
     title: '',
     description: '',
     date: '',
+    dateTBD: false,
     startHour: '',
     startMinute: '',
     startPeriod: 'AM',
@@ -69,9 +70,9 @@ const SessionManagement = () => {
         venue: formData.venue,
         trainer: formData.trainer,
         joinLink: formData.joinLink,
-        date: new Date(formData.date).toISOString(),
-        startTime: startTime24 ? new Date(`${formData.date}T${startTime24}`).toISOString() : null,
-        endTime: endTime24 ? new Date(`${formData.date}T${endTime24}`).toISOString() : null,
+        date: formData.dateTBD || !formData.date ? null : new Date(formData.date).toISOString(),
+        startTime: startTime24 && formData.date ? new Date(`${formData.date}T${startTime24}`).toISOString() : null,
+        endTime: endTime24 && formData.date ? new Date(`${formData.date}T${endTime24}`).toISOString() : null,
       });
 
       if (response.data?.success) {
@@ -164,7 +165,7 @@ const SessionManagement = () => {
     {
       key: 'date',
       header: 'Date',
-      render: (session) => new Date(session.date).toLocaleDateString(),
+      render: (session) => session.date ? new Date(session.date).toLocaleDateString() : 'TBD',
       headerClassName: 'w-[20%]'
     },
     {
@@ -266,13 +267,25 @@ const SessionManagement = () => {
                 <label className="block text-sm font-medium text-zocc-blue-300 mb-2">
                   Date *
                 </label>
-                <input
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                  className="w-full px-4 py-2 bg-zocc-blue-800/50 border border-zocc-blue-700/30 rounded-lg text-white"
-                  required
-                />
+                <div className="space-y-2">
+                  <input
+                    type="date"
+                    value={formData.date}
+                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                    className="w-full px-4 py-2 bg-zocc-blue-800/50 border border-zocc-blue-700/30 rounded-lg text-white"
+                    required={!formData.dateTBD}
+                    disabled={formData.dateTBD}
+                  />
+                  <label className="flex items-center gap-2 text-sm text-zocc-blue-300 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.dateTBD}
+                      onChange={(e) => setFormData({ ...formData, dateTBD: e.target.checked, date: e.target.checked ? '' : formData.date })}
+                      className="w-4 h-4 rounded border-zocc-blue-700/30 bg-zocc-blue-800/50 text-zocc-blue-500 focus:ring-zocc-blue-500"
+                    />
+                    <span>Date To Be Determined (TBD)</span>
+                  </label>
+                </div>
               </div>
               {/* Start Time */}
               <div>

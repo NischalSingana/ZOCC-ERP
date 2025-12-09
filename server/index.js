@@ -59,6 +59,10 @@ const allowedOrigins = process.env.CORS_ORIGIN
     'https://www.nischalsingana.com',
     'https://erp.nischalsingana.com',
     'https://backend.nischalsingana.com',
+    'https://zeroonedevs.in',
+    'https://www.zeroonedevs.in',
+    'https://erp.zeroonedevs.in',
+    'https://backend.zeroonedevs.in',
     'https://spendingcalculator.xyz',
     'https://www.spendingcalculator.xyz',
     'https://backend.spendingcalculator.xyz',
@@ -77,8 +81,8 @@ app.use(cors({
       return callback(null, true);
     }
 
-    // Check for trusted domains (nischalsingana.com and spendingcalculator.xyz)
-    const trustedDomains = ['nischalsingana.com', 'spendingcalculator.xyz'];
+    // Check for trusted domains (nischalsingana.com, zeroonedevs.in, and spendingcalculator.xyz)
+    const trustedDomains = ['nischalsingana.com', 'zeroonedevs.in', 'spendingcalculator.xyz'];
     if (trustedDomains.some(domain => origin.includes(domain))) {
       return callback(null, true);
     }

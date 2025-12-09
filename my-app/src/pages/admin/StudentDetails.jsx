@@ -60,6 +60,7 @@ const StudentDetails = () => {
         studentFullName: studentData.studentFullName,
         email: studentData.email,
         phone: studentData.phone,
+        idNumber: studentData.idNumber,
       });
 
       if (response.data?.success || response.data?.user) {

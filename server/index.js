@@ -1329,10 +1329,15 @@ app.get('/api/files/:filePath(*)', async (req, res) => {
     }
 
     const filePath = decodeURIComponent(req.params.filePath);
-    console.log('Proxy requesting file:', filePath); // Debug log
+    console.log('=== File Download Request ===');
+    console.log('Raw filePath param:', req.params.filePath);
+    console.log('Decoded filePath:', filePath);
+    console.log('Query params:', req.query);
+    console.log('Auth header present:', !!req.headers['authorization']);
 
     if (!filePath || (!filePath.startsWith('submissions/') && !filePath.startsWith('project-submissions/') && !filePath.startsWith('reference-files/') && !filePath.startsWith('task-attachments/'))) {
-      return res.status(403).json({ error: 'Access denied' });
+      console.log('❌ Access denied - invalid file path prefix');
+      return res.status(403).json({ error: 'Access denied', filePath });
     }
 
     // Authentication and authorization check

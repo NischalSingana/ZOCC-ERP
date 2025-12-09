@@ -24,6 +24,9 @@ export const getApiUrl = () => {
         { frontend: 'nischalsingana.com', backend: 'backend.nischalsingana.com' },
         { frontend: 'erp.nischalsingana.com', backend: 'backend.nischalsingana.com' },
         { frontend: 'www.nischalsingana.com', backend: 'backend.nischalsingana.com' },
+        { frontend: 'zeroonedevs.in', backend: 'backend.zeroonedevs.in' },
+        { frontend: 'erp.zeroonedevs.in', backend: 'backend.zeroonedevs.in' },
+        { frontend: 'www.zeroonedevs.in', backend: 'backend.zeroonedevs.in' },
         { frontend: 'spendingcalculator.xyz', backend: 'backend.spendingcalculator.xyz' },
         { frontend: 'www.spendingcalculator.xyz', backend: 'backend.spendingcalculator.xyz' }
       ];

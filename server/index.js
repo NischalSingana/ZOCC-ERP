@@ -792,11 +792,12 @@ app.get('/api/sessions', authenticateToken, async (req, res) => {
 app.post('/api/sessions', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { title, description, date, startTime, endTime, venue, trainer, maxSeats, joinLink, status } = req.body;
-    if (!title || !description || !date || !venue) {
-      return res.status(400).json({ error: 'Title, description, date, and venue are required' });
+    if (!title || !description || !venue) {
+      return res.status(400).json({ error: 'Title, description, and venue are required' });
     }
     const session = await Session.create({
-      title, description, date: new Date(date),
+      title, description,
+      date: date ? new Date(date) : null,
       startTime: startTime ? new Date(startTime) : null,
       endTime: endTime ? new Date(endTime) : null,
       venue, trainer: trainer || null,
@@ -821,9 +822,16 @@ app.put('/api/sessions/:id', authenticateToken, requireAdmin, async (req, res) =
     const { title, description, date, startTime, endTime, venue, trainer, maxSeats, joinLink, status } = req.body;
     if (title) session.title = title;
     if (description) session.description = description;
-    if (date) session.date = new Date(date);
-    if (startTime) session.startTime = new Date(startTime);
-    if (endTime) session.endTime = new Date(endTime);
+    // Allow explicitly setting date to null for TBD
+    if (req.body.hasOwnProperty('date')) {
+      session.date = date ? new Date(date) : null;
+    }
+    if (req.body.hasOwnProperty('startTime')) {
+      session.startTime = startTime ? new Date(startTime) : null;
+    }
+    if (req.body.hasOwnProperty('endTime')) {
+      session.endTime = endTime ? new Date(endTime) : null;
+    }
     if (venue) session.venue = venue;
     if (trainer !== undefined) session.trainer = trainer;
     if (maxSeats !== undefined) session.maxSeats = maxSeats;

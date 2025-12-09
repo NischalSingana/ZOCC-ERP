@@ -81,15 +81,38 @@ const ProfileForm = ({ user, onUpdate }) => {
           setLoading(false);
           return;
         }
-        // Assuming you have a password update endpoint
-        // await axiosInstance.put('/api/users/me/password', {
-        //   currentPassword: formData.currentPassword,
-        //   newPassword: formData.newPassword,
-        // });
-        showToast.success('Password update will be implemented soon');
+
+        if (!formData.currentPassword) {
+          showToast.error('Current password is required to change password');
+          setLoading(false);
+          return;
+        }
+
+        try {
+          await axiosInstance.put('/api/users/me/password', {
+            currentPassword: formData.currentPassword,
+            newPassword: formData.newPassword,
+          });
+          showToast.success('Password updated successfully!');
+
+          // Clear password fields
+          setFormData({
+            ...formData,
+            currentPassword: '',
+            newPassword: '',
+            confirmPassword: '',
+          });
+        } catch (error) {
+          const errorMessage = error.response?.data?.error || 'Failed to update password';
+          showToast.error(errorMessage);
+          setLoading(false);
+          return;
+        }
       }
     } catch (error) {
       console.error('Error updating profile:', error);
+      const errorMessage = error.response?.data?.error || 'Failed to update profile';
+      showToast.error(errorMessage);
     } finally {
       setLoading(false);
     }

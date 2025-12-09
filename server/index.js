@@ -1807,7 +1807,11 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
     if (studentFullName) targetUser.studentFullName = studentFullName;
     if (email && requestingUser.role === 'ADMIN') targetUser.email = email.toLowerCase();
     if (phone !== undefined) targetUser.phone = phone || null;
-    if (idNumber !== undefined && requestingUser.role === 'ADMIN') targetUser.idNumber = idNumber;
+    if (requestingUser.role === 'ADMIN') {
+      if (idNumber !== undefined) {
+        targetUser.idNumber = idNumber || null;
+      }
+    }
     await targetUser.save();
     res.json({
       success: true,

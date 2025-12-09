@@ -457,6 +457,84 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
+// Register without OTP (Pending Approval) - TEMPORARY until SMTP is fixed
+app.post('/api/auth/register-pending', async (req, res) => {
+  try {
+    const { studentFullName, idNumber, email, password, phone } = req.body;
+
+    // Validation
+    if (!studentFullName || !idNumber || !email || !password) {
+      return res.status(400).json({ error: 'Name, ID number, email, and password are required' });
+    }
+
+    if (studentFullName.length < 2 || studentFullName.length > 100) {
+      return res.status(400).json({ error: 'Student name must be between 2 and 100 characters' });
+    }
+
+    if (idNumber.length !== 10 || !/^\d+$/.test(idNumber)) {
+      return res.status(400).json({ error: 'ID number must be exactly 10 digits' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
+
+    const expectedEmail = `${idNumber}@kluniversity.in`;
+    if (email.toLowerCase() !== expectedEmail.toLowerCase()) {
+      return res.status(400).json({ error: 'Email must match ID number format: idnumber@kluniversity.in' });
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({
+      $or: [
+        { email: email.toLowerCase() },
+        { idNumber: idNumber }
+      ]
+    });
+
+    if (existingUser) {
+      if (existingUser.accountStatus === 'PENDING') {
+        return res.status(409).json({ error: 'Your registration is already pending admin approval' });
+      }
+      if (existingUser.accountStatus === 'REJECTED') {
+        return res.status(403).json({ error: 'Your previous registration was rejected. Please contact admin.' });
+      }
+      return res.status(409).json({ error: 'Email or ID number already registered. Please login instead.' });
+    }
+
+    // Create new user with PENDING status
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newUser = await User.create({
+      studentFullName: studentFullName.trim(),
+      idNumber: idNumber,
+      email: email.toLowerCase(),
+      password: hashedPassword,
+      phone: phone || '',
+      emailVerified: false, // Will be set to true when admin approves
+      accountStatus: 'PENDING',
+      role: 'STUDENT'
+    });
+
+    console.log(`✅ Pending registration created for ${email}`);
+
+    res.status(201).json({
+      success: true,
+      message: 'Registration submitted successfully! Your account is pending admin approval. You will be able to login once approved.',
+      accountStatus: 'PENDING'
+    });
+  } catch (error) {
+    console.error('Pending registration error:', error);
+    if (error.code === 11000) {
+      return res.status(409).json({ error: 'Email or ID number already exists' });
+    }
+    res.status(500).json({ error: 'Registration failed. Please try again.' });
+  }
+});
+
 // Login
 app.post('/api/auth/login', async (req, res) => {
   try {
@@ -491,6 +569,16 @@ app.post('/api/auth/login', async (req, res) => {
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    // Check account status (for non-admin users)
+    if (!isAdminEmail && user.accountStatus) {
+      if (user.accountStatus === 'PENDING') {
+        return res.status(403).json({ error: 'Your account is pending admin approval. Please wait for approval before logging in.' });
+      }
+      if (user.accountStatus === 'REJECTED') {
+        return res.status(403).json({ error: 'Your account registration was rejected. Please contact admin for more information.' });
+      }
     }
 
     if (isAdminEmail && user.role !== 'ADMIN') {
@@ -1077,37 +1165,26 @@ app.put('/api/submissions/:id', authenticateToken, requireAdmin, async (req, res
 // Get user attendance
 app.get('/api/attendance', authenticateToken, async (req, res) => {
   try {
-    const sessions = await Session.find().sort({ date: -1, startTime: -1 });
+    // Only get attendance records for this user (don't fetch all sessions)
     const userAttendance = await Attendance.find({ userId: req.userId })
       .populate({ path: 'sessionId', select: 'title description date startTime venue trainer', model: 'Session' })
       .sort({ markedAt: -1 });
 
-    const attendanceMap = new Map();
-    userAttendance.forEach(att => {
-      if (att.sessionId) {
-        attendanceMap.set(att.sessionId._id.toString(), {
-          status: att.status,
-          markedAt: att.markedAt,
-          notes: att.notes
-        });
-      }
-    });
-
-    const attendanceData = sessions.map(session => {
-      const attendanceRecord = attendanceMap.get(session._id.toString());
-      return {
-        sessionId: session._id,
-        title: session.title,
-        description: session.description,
-        date: session.date,
-        startTime: session.startTime,
-        venue: session.venue,
-        trainer: session.trainer,
-        status: attendanceRecord?.status || 'absent',
-        markedAt: attendanceRecord?.markedAt,
-        notes: attendanceRecord?.notes
-      };
-    });
+    // Filter out any records where session was deleted
+    const attendanceData = userAttendance
+      .filter(att => att.sessionId) // Only include if session still exists
+      .map(att => ({
+        sessionId: att.sessionId._id,
+        title: att.sessionId.title,
+        description: att.sessionId.description,
+        date: att.sessionId.date,
+        startTime: att.sessionId.startTime,
+        venue: att.sessionId.venue,
+        trainer: att.sessionId.trainer,
+        status: att.status,
+        markedAt: att.markedAt,
+        notes: att.notes
+      }));
 
     res.json({ success: true, attendance: attendanceData });
   } catch (error) {
@@ -1408,6 +1485,94 @@ app.get('/api/users/all', authenticateToken, requireAdmin, async (req, res) => {
   } catch (error) {
     console.error('Error fetching students:', error);
     res.status(500).json({ error: 'Failed to fetch students' });
+  }
+});
+
+// Get pending account registrations (Admin only)
+app.get('/api/admin/pending-accounts', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const pendingUsers = await User.find({ accountStatus: 'PENDING', role: 'STUDENT' })
+      .select('-password')
+      .sort({ createdAt: -1 });
+
+    res.json({ success: true, pendingAccounts: pendingUsers });
+  } catch (error) {
+    console.error('Error fetching pending accounts:', error);
+    res.status(500).json({ error: 'Failed to fetch pending accounts' });
+  }
+});
+
+// Approve pending account (Admin only)
+app.post('/api/admin/approve-account/:userId', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (user.accountStatus !== 'PENDING') {
+      return res.status(400).json({ error: 'Account is not pending approval' });
+    }
+
+    // Approve the account
+    user.accountStatus = 'APPROVED';
+    user.emailVerified = true; // Mark email as verified when approved
+    await user.save();
+
+    console.log(`✅ Account approved for ${user.email} by admin`);
+
+    res.json({
+      success: true,
+      message: 'Account approved successfully',
+      user: {
+        id: user._id,
+        studentFullName: user.studentFullName,
+        email: user.email,
+        accountStatus: user.accountStatus
+      }
+    });
+  } catch (error) {
+    console.error('Error approving account:', error);
+    res.status(500).json({ error: 'Failed to approve account' });
+  }
+});
+
+// Reject pending account (Admin only)
+app.post('/api/admin/reject-account/:userId', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { reason } = req.body; // Optional rejection reason
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (user.accountStatus !== 'PENDING') {
+      return res.status(400).json({ error: 'Account is not pending approval' });
+    }
+
+    // Reject the account
+    user.accountStatus = 'REJECTED';
+    await user.save();
+
+    console.log(`❌ Account rejected for ${user.email} by admin${reason ? `: ${reason}` : ''}`);
+
+    res.json({
+      success: true,
+      message: 'Account rejected successfully',
+      user: {
+        id: user._id,
+        studentFullName: user.studentFullName,
+        email: user.email,
+        accountStatus: user.accountStatus
+      }
+    });
+  } catch (error) {
+    console.error('Error rejecting account:', error);
+    res.status(500).json({ error: 'Failed to reject account' });
   }
 });
 

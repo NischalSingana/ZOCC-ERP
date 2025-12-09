@@ -139,7 +139,7 @@ const ProfileForm = ({ user, onUpdate }) => {
         </label>
         <FileUpload
           onFileSelect={handlePhotoChange}
-          accept="image/*"
+          accept="image/png,image/jpeg,image/jpg"
           maxSize={5}
           currentFile={user?.photo}
         />

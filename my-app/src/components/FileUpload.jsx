@@ -66,11 +66,10 @@ const FileUpload = ({
         </label>
       )}
       <div
-        className={`border-2 border-dashed rounded-lg p-6 transition-colors ${
-          dragActive
+        className={`border-2 border-dashed rounded-lg p-6 transition-colors ${dragActive
             ? 'border-zocc-blue-500 bg-zocc-blue-500/10'
             : 'border-zocc-blue-700/30 hover:border-zocc-blue-500/50'
-        } ${error ? 'border-red-500' : ''} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+          } ${error ? 'border-red-500' : ''} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
         onDragEnter={handleDrag}
         onDragLeave={handleDrag}
         onDragOver={handleDrag}
@@ -123,7 +122,9 @@ const FileUpload = ({
               </button>
             </p>
             <p className="text-xs text-zocc-blue-400">
-              Max size: {maxSize}MB. Accepted: Images, PDF, DOC, DOCX
+              {accept === 'image/png,image/jpeg,image/jpg'
+                ? `Max size: ${maxSize}MB. Accepted: PNG, JPG, JPEG only`
+                : `Max size: ${maxSize}MB. Accepted: Images, PDF, DOC, DOCX`}
             </p>
           </div>
         )}

@@ -274,6 +274,7 @@ const SessionManagement = () => {
                   required
                 />
               </div>
+              {/* Start Time */}
               <div>
                 <label className="block text-sm font-medium text-zocc-blue-300 mb-2">
                   Start Time
@@ -285,7 +286,19 @@ const SessionManagement = () => {
                     max="12"
                     placeholder="HH"
                     value={formData.startHour}
-                    onChange={(e) => setFormData({ ...formData, startHour: e.target.value })}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // Only allow 1-2 digits
+                      if (value === '' || (parseInt(value) >= 1 && parseInt(value) <= 12 && value.length <= 2)) {
+                        setFormData({ ...formData, startHour: value });
+                      }
+                    }}
+                    onBlur={(e) => {
+                      // Pad with zero on blur if single digit
+                      if (e.target.value && e.target.value.length === 1) {
+                        setFormData({ ...formData, startHour: e.target.value.padStart(2, '0') });
+                      }
+                    }}
                     className="w-20 px-4 py-2 bg-zocc-blue-800/50 border border-zocc-blue-700/30 rounded-lg text-white text-center"
                   />
                   <span className="text-white self-center">:</span>
@@ -295,7 +308,19 @@ const SessionManagement = () => {
                     max="59"
                     placeholder="MM"
                     value={formData.startMinute}
-                    onChange={(e) => setFormData({ ...formData, startMinute: e.target.value.padStart(2, '0') })}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // Only allow 0-59 and max 2 digits
+                      if (value === '' || (parseInt(value) >= 0 && parseInt(value) <= 59 && value.length <= 2)) {
+                        setFormData({ ...formData, startMinute: value });
+                      }
+                    }}
+                    onBlur={(e) => {
+                      // Pad with zero on blur if single digit
+                      if (e.target.value && e.target.value.length === 1) {
+                        setFormData({ ...formData, startMinute: e.target.value.padStart(2, '0') });
+                      }
+                    }}
                     className="w-20 px-4 py-2 bg-zocc-blue-800/50 border border-zocc-blue-700/30 rounded-lg text-white text-center"
                   />
                   <select
@@ -308,6 +333,8 @@ const SessionManagement = () => {
                   </select>
                 </div>
               </div>
+
+              {/* End Time */}
               <div>
                 <label className="block text-sm font-medium text-zocc-blue-300 mb-2">
                   End Time
@@ -319,7 +346,19 @@ const SessionManagement = () => {
                     max="12"
                     placeholder="HH"
                     value={formData.endHour}
-                    onChange={(e) => setFormData({ ...formData, endHour: e.target.value })}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // Only allow 1-2 digits
+                      if (value === '' || (parseInt(value) >= 1 && parseInt(value) <= 12 && value.length <= 2)) {
+                        setFormData({ ...formData, endHour: value });
+                      }
+                    }}
+                    onBlur={(e) => {
+                      // Pad with zero on blur if single digit
+                      if (e.target.value && e.target.value.length === 1) {
+                        setFormData({ ...formData, endHour: e.target.value.padStart(2, '0') });
+                      }
+                    }}
                     className="w-20 px-4 py-2 bg-zocc-blue-800/50 border border-zocc-blue-700/30 rounded-lg text-white text-center"
                   />
                   <span className="text-white self-center">:</span>
@@ -329,7 +368,19 @@ const SessionManagement = () => {
                     max="59"
                     placeholder="MM"
                     value={formData.endMinute}
-                    onChange={(e) => setFormData({ ...formData, endMinute: e.target.value.padStart(2, '0') })}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // Only allow 0-59 and max 2 digits
+                      if (value === '' || (parseInt(value) >= 0 && parseInt(value) <= 59 && value.length <= 2)) {
+                        setFormData({ ...formData, endMinute: value });
+                      }
+                    }}
+                    onBlur={(e) => {
+                      // Pad with zero on blur if single digit
+                      if (e.target.value && e.target.value.length === 1) {
+                        setFormData({ ...formData, endMinute: e.target.value.padStart(2, '0') });
+                      }
+                    }}
                     className="w-20 px-4 py-2 bg-zocc-blue-800/50 border border-zocc-blue-700/30 rounded-lg text-white text-center"
                   />
                   <select

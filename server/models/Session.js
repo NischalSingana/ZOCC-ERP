@@ -15,7 +15,7 @@ const sessionSchema = new mongoose.Schema({
   },
   date: {
     type: Date,
-    required: true
+    required: false
   },
   startTime: {
     type: Date

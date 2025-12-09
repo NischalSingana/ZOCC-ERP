@@ -1803,10 +1803,11 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
     if (requestingUser.role !== 'ADMIN' && requestingUser._id.toString() !== req.params.id) {
       return res.status(403).json({ error: 'Access denied' });
     }
-    const { studentFullName, email, phone } = req.body;
+    const { studentFullName, email, phone, idNumber } = req.body;
     if (studentFullName) targetUser.studentFullName = studentFullName;
     if (email && requestingUser.role === 'ADMIN') targetUser.email = email.toLowerCase();
     if (phone !== undefined) targetUser.phone = phone || null;
+    if (idNumber !== undefined && requestingUser.role === 'ADMIN') targetUser.idNumber = idNumber;
     await targetUser.save();
     res.json({
       success: true,

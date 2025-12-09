@@ -51,7 +51,7 @@ export const getApiUrl = () => {
       const domainParts = hostname.split('.');
       if (domainParts.length >= 2) {
         const baseDomain = domainParts.slice(-2).join('.'); // Get domain.com
-        const backendUrl = `${protocol}//backend.${baseDomain}`;
+        const backendUrl = `${protocol}://backend.${baseDomain}`;
         console.log('🔗 Detected production, trying backend URL:', backendUrl);
         return backendUrl;
       }

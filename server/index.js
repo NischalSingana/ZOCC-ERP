@@ -1816,6 +1816,7 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
         studentFullName: targetUser.studentFullName,
         email: targetUser.email,
         phone: targetUser.phone,
+        photo: targetUser.photo,
         idNumber: targetUser.idNumber,
         role: targetUser.role,
         emailVerified: targetUser.emailVerified

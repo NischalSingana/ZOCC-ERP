@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Eye, EyeOff, Upload } from 'lucide-react';
-import FileUpload from './FileUpload';
+import { Eye, EyeOff } from 'lucide-react';
 import axiosInstance from '../api/axiosConfig';
 import { showToast } from '../utils/toastUtils';
 import { useAuth } from '../context/AuthContext';
@@ -15,7 +14,6 @@ const ProfileForm = ({ user, onUpdate }) => {
     newPassword: '',
     confirmPassword: '',
   });
-  const [photo, setPhoto] = useState(null);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -41,10 +39,6 @@ const ProfileForm = ({ user, onUpdate }) => {
     });
   };
 
-  const handlePhotoChange = (file) => {
-    setPhoto(file);
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -65,26 +59,7 @@ const ProfileForm = ({ user, onUpdate }) => {
         onUpdate?.(response.data.user);
       }
 
-      // Upload photo if selected
-      if (photo) {
-        try {
-          const formDataPhoto = new FormData();
-          formDataPhoto.append('photo', photo);
-          const photoResponse = await axiosInstance.post('/api/users/me/photo', formDataPhoto, {
-            headers: {
-              'Content-Type': 'multipart/form-data',
-            },
-          });
 
-          if (photoResponse.data?.user) {
-            updateUser(photoResponse.data.user);
-            showToast.success('Profile photo updated successfully!');
-          }
-        } catch (error) {
-          const errorMessage = error.response?.data?.error || 'Failed to upload photo';
-          showToast.error(errorMessage);
-        }
-      }
 
       // Update password if provided
       if (formData.newPassword) {
@@ -132,18 +107,6 @@ const ProfileForm = ({ user, onUpdate }) => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Photo Upload */}
-      <div>
-        <label className="block text-sm font-medium text-zocc-blue-300 mb-2">
-          Profile Photo
-        </label>
-        <FileUpload
-          onFileSelect={handlePhotoChange}
-          accept="image/png,image/jpeg,image/jpg"
-          maxSize={5}
-          currentFile={user?.photo}
-        />
-      </div>
 
       {/* Name */}
       <div>

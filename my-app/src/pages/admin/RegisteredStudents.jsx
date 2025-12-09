@@ -54,15 +54,7 @@ const RegisteredStudents = () => {
       headerClassName: 'w-[8%]',
       render: (student) => (
         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-zocc-blue-600 to-zocc-blue-700 flex items-center justify-center text-sm font-bold text-white overflow-hidden ring-2 ring-zocc-blue-500/30">
-          {student.photo ? (
-            <img
-              src={student.photo}
-              alt={student.studentFullName}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            (student.studentFullName || student.email || 'U').charAt(0).toUpperCase()
-          )}
+          {(student.studentFullName || student.email || 'U').charAt(0).toUpperCase()}
         </div>
       ),
     },

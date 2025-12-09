@@ -13,6 +13,7 @@ import {
   Settings,
   MessageSquare,
   HelpCircle,
+  Clock,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -34,6 +35,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
 
   const adminMenuItems = [
     { icon: LayoutDashboard, label: 'Overview', path: '/dashboard' },
+    { icon: Clock, label: 'Account Approvals', path: '/dashboard/admin/account-approvals' },
     { icon: Users, label: 'Registered Students', path: '/dashboard/admin/students' },
     { icon: UserCircle, label: 'Student Details', path: '/dashboard/admin/student-details' },
     { icon: CalendarCheck, label: 'Attendance Marking', path: '/dashboard/admin/attendance' },

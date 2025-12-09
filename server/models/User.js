@@ -46,6 +46,11 @@ const userSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  accountStatus: {
+    type: String,
+    enum: ['PENDING', 'APPROVED', 'REJECTED'],
+    default: 'APPROVED' // Default to approved for existing flow
+  },
   createdAt: {
     type: Date,
     default: Date.now

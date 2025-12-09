@@ -48,24 +48,39 @@ const RegisteredStudents = () => {
   };
 
   const columns = [
-    { key: 'idNumber', header: 'ID Number' },
-    { key: 'studentFullName', header: 'Name' },
-    { key: 'email', header: 'Email' },
+    {
+      key: 'idNumber',
+      header: 'ID Number',
+      headerClassName: 'w-[15%]'
+    },
+    {
+      key: 'studentFullName',
+      header: 'Name',
+      headerClassName: 'w-[18%]',
+      cellClassName: 'break-words'
+    },
+    {
+      key: 'email',
+      header: 'Email',
+      headerClassName: 'w-[25%]',
+      cellClassName: 'break-words'
+    },
     {
       key: 'phone',
       header: 'Phone',
+      headerClassName: 'w-[12%]',
       render: (student) => student.phone || 'N/A',
     },
     {
       key: 'status',
       header: 'Status',
+      headerClassName: 'w-[12%]',
       render: (student) => (
         <span
-          className={`px-2 py-1 rounded text-xs ${
-            student.emailVerified
+          className={`px-2 py-1 rounded text-xs whitespace-nowrap inline-block ${student.emailVerified
               ? 'bg-green-500/20 text-green-400'
               : 'bg-yellow-500/20 text-yellow-400'
-          }`}
+            }`}
         >
           {student.emailVerified ? 'Verified' : 'Pending'}
         </span>
@@ -74,6 +89,7 @@ const RegisteredStudents = () => {
     {
       key: 'createdAt',
       header: 'Joined',
+      headerClassName: 'w-[10%]',
       render: (student) =>
         student.createdAt
           ? new Date(student.createdAt).toLocaleDateString()
@@ -82,6 +98,7 @@ const RegisteredStudents = () => {
     {
       key: 'actions',
       header: 'Actions',
+      headerClassName: 'w-[8%]',
       render: (student) => (
         <div className="flex gap-2">
           <button

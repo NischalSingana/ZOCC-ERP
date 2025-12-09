@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { Bell, Menu, X, User, LogOut, Settings, ChevronDown } from 'lucide-react';
+import { Bell, Menu, X, User, LogOut, ChevronDown } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { API_URL } from '../utils/apiUrl';
 
 const Navbar = ({ onMenuClick, sidebarOpen }) => {
   const { user, logout } = useAuth();
@@ -25,13 +26,13 @@ const Navbar = ({ onMenuClick, sidebarOpen }) => {
 
         // Fetch recent announcements, sessions, and tasks in parallel
         const [announcementsRes, sessionsRes, tasksRes] = await Promise.all([
-          fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/announcements`, {
+          fetch(`${API_URL}/api/announcements`, {
             headers: { 'Authorization': `Bearer ${token}` }
           }),
-          fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/sessions`, {
+          fetch(`${API_URL}/api/sessions`, {
             headers: { 'Authorization': `Bearer ${token}` }
           }),
-          fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/tasks`, {
+          fetch(`${API_URL}/api/tasks`, {
             headers: { 'Authorization': `Bearer ${token}` }
           })
         ]);

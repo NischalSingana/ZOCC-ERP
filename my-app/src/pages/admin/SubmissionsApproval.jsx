@@ -115,7 +115,7 @@ const SubmissionsApproval = () => {
         // If it's a signed URL or full URL, extract the key
         const match = fileUrl.match(/(submissions\/[^?]+)/);
         if (match) {
-          fileKey = decodeURIComponent(match[1]);
+          fileKey = match[1]; // Don't decode here, will encode later
         } else {
           // If we can't extract a key, try using the URL directly
           const token = localStorage.getItem('authToken');

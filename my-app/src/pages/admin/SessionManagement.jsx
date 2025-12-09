@@ -170,7 +170,12 @@ const SessionManagement = () => {
     {
       key: 'date',
       header: 'Date',
-      render: (session) => session.date ? new Date(session.date).toLocaleDateString() : 'TBD',
+      render: (session) => {
+        if (!session.date) return 'TBD';
+        const date = new Date(session.date);
+        if (isNaN(date.getTime())) return 'TBD';
+        return date.toLocaleDateString();
+      },
       headerClassName: 'w-[20%]'
     },
     {

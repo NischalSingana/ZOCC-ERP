@@ -27,6 +27,7 @@ import SubmissionsApproval from './pages/admin/SubmissionsApproval.jsx';
 import AnnouncementsAdmin from './pages/admin/Announcements.jsx';
 import TaskAdmin from './pages/admin/TaskAdmin.jsx';
 import AdminQueries from './pages/admin/Queries.jsx';
+import AccountApprovals from './pages/admin/AccountApprovals.jsx';
 
 function App() {
   return (
@@ -155,6 +156,16 @@ function App() {
             <ProtectedRoute requiredRole="ADMIN">
               <DashboardLayout>
                 <RegisteredStudents />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/admin/account-approvals"
+          element={
+            <ProtectedRoute requiredRole="ADMIN">
+              <DashboardLayout>
+                <AccountApprovals />
               </DashboardLayout>
             </ProtectedRoute>
           }

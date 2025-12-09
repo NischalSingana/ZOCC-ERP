@@ -97,10 +97,8 @@ const AttendanceAdmin = () => {
         'S.No': index + 1,
         'Student Name': item.studentFullName || 'N/A',
         'ID Number': item.idNumber || 'N/A',
-        'Email': item.email || 'N/A',
         'Status': item.status ? item.status.toUpperCase() : 'Not Marked',
         'Marked At': item.markedAt ? new Date(item.markedAt).toLocaleString() : 'N/A',
-        'Notes': item.notes || ''
       }));
 
       // Create workbook and worksheet
@@ -142,23 +140,18 @@ const AttendanceAdmin = () => {
     {
       key: 'studentFullName',
       header: 'Student Name',
-      headerClassName: 'w-[20%]'
+      headerClassName: 'w-[30%]',
+      cellClassName: 'break-words'
     },
     {
       key: 'idNumber',
       header: 'ID Number',
-      headerClassName: 'w-[15%]'
-    },
-    {
-      key: 'email',
-      header: 'Email',
-      headerClassName: 'w-[25%]',
-      cellClassName: 'break-words'
+      headerClassName: 'w-[20%]'
     },
     {
       key: 'status',
       header: 'Status',
-      headerClassName: 'w-[15%]',
+      headerClassName: 'w-[20%]',
       render: (item) => {
         const status = item.status?.toUpperCase();
         if (!status || status === 'NULL' || status === 'UNDEFINED') {
@@ -171,12 +164,12 @@ const AttendanceAdmin = () => {
         return (
           <span
             className={`px-2 py-1 rounded text-xs whitespace-nowrap inline-block ${status === 'PRESENT'
-                ? 'bg-green-500/20 text-green-400'
-                : status === 'LATE'
-                  ? 'bg-yellow-500/20 text-yellow-400'
-                  : status === 'EXCUSED'
-                    ? 'bg-blue-500/20 text-blue-400'
-                    : 'bg-red-500/20 text-red-400'
+              ? 'bg-green-500/20 text-green-400'
+              : status === 'LATE'
+                ? 'bg-yellow-500/20 text-yellow-400'
+                : status === 'EXCUSED'
+                  ? 'bg-blue-500/20 text-blue-400'
+                  : 'bg-red-500/20 text-red-400'
               }`}
           >
             {status}
@@ -187,7 +180,7 @@ const AttendanceAdmin = () => {
     {
       key: 'actions',
       header: 'Actions',
-      headerClassName: 'w-[25%]',
+      headerClassName: 'w-[30%]',
       render: (item) => (
         <div className="flex gap-2">
           <button
@@ -255,8 +248,8 @@ const AttendanceAdmin = () => {
                   key={session.id || session._id}
                   onClick={() => setSelectedSession(session)}
                   className={`w-full text-left p-4 rounded-lg transition-all ${(selectedSession?.id || selectedSession?._id) === (session.id || session._id)
-                      ? 'bg-zocc-blue-600 border-2 border-zocc-blue-500'
-                      : 'bg-zocc-blue-800/30 border border-zocc-blue-700/30 hover:bg-zocc-blue-800/50'
+                    ? 'bg-zocc-blue-600 border-2 border-zocc-blue-500'
+                    : 'bg-zocc-blue-800/30 border border-zocc-blue-700/30 hover:bg-zocc-blue-800/50'
                     }`}
                 >
                   <h3 className="text-white font-medium">{session.title}</h3>

@@ -132,18 +132,12 @@ const Sessions = () => {
                   </div>
                   <div className="flex items-center gap-2 text-sm text-zocc-blue-400">
                     <Clock size={16} />
-                    <span>{formatTime(session.startTime)}</span>
+                    <span>{formatTime(session.startTime)} - {formatTime(session.endTime)}</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-zocc-blue-400">
                     <MapPin size={16} />
                     <span>{session.venue}</span>
                   </div>
-                  {session.trainer && (
-                    <div className="flex items-center gap-2 text-sm text-zocc-blue-400">
-                      <Users size={16} />
-                      <span>Trainer: {session.trainer}</span>
-                    </div>
-                  )}
                 </div>
 
                 <div className="flex items-center gap-2 text-zocc-blue-400 text-sm group-hover:text-zocc-blue-300 transition-colors">
@@ -194,18 +188,12 @@ const Sessions = () => {
                   </div>
                   <div className="flex items-center gap-2 text-sm text-zocc-blue-400">
                     <Clock size={16} />
-                    <span>{formatTime(session.startTime)}</span>
+                    <span>{formatTime(session.startTime)} - {formatTime(session.endTime)}</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-zocc-blue-400">
                     <MapPin size={16} />
                     <span>{session.venue}</span>
                   </div>
-                  {session.trainer && (
-                    <div className="flex items-center gap-2 text-sm text-zocc-blue-400">
-                      <Users size={16} />
-                      <span>Trainer: {session.trainer}</span>
-                    </div>
-                  )}
                 </div>
               </div>
             ))}
@@ -269,7 +257,7 @@ const Sessions = () => {
                     <Clock size={18} />
                     <span className="text-sm font-semibold uppercase">Time</span>
                   </div>
-                  <p className="text-white font-medium">{formatTime(selectedSession.startTime)}</p>
+                  <p className="text-white font-medium">{formatTime(selectedSession.startTime)} - {formatTime(selectedSession.endTime)}</p>
                 </div>
 
                 <div className="bg-zocc-blue-800/30 rounded-lg p-4">
@@ -278,14 +266,6 @@ const Sessions = () => {
                     <span className="text-sm font-semibold uppercase">Venue</span>
                   </div>
                   <p className="text-white font-medium">{selectedSession.venue}</p>
-                </div>
-
-                <div className="bg-zocc-blue-800/30 rounded-lg p-4">
-                  <div className="flex items-center gap-2 text-zocc-blue-400 mb-2">
-                    <Users size={18} />
-                    <span className="text-sm font-semibold uppercase">Trainer</span>
-                  </div>
-                  <p className="text-white font-medium">{selectedSession.trainer || 'TBA'}</p>
                 </div>
               </div>
 

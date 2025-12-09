@@ -64,7 +64,8 @@ const StudentDetails = () => {
 
       if (response.data?.success || response.data?.user) {
         showToast.success('Student details updated successfully');
-        setStudentData(response.data.user || studentData);
+        // Refetch the student data to ensure we have the latest
+        await fetchStudentDetails(studentData.id);
         setIsEditing(false);
       }
     } catch (error) {

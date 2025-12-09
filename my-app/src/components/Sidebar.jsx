@@ -60,7 +60,8 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
   return (
     <aside
       className={`${isOpen ? 'w-64' : 'w-20'
-        } bg-primary-900 border-r border-primary-800 shadow-sm transition-all duration-300 flex flex-col fixed left-0 top-0 h-full z-40`}
+        } bg-primary-900 border-r border-primary-800 shadow-sm transition-all duration-300 flex flex-col fixed left-0 top-0 h-full z-40 lg:z-40 ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        }`}
     >
       {/* Logo Section */}
       <div className="p-6 flex items-center justify-between border-b border-primary-800">

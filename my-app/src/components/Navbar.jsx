@@ -85,22 +85,22 @@ const Navbar = ({ onMenuClick, sidebarOpen }) => {
   };
 
   return (
-    <header className="bg-primary-900 border-b border-primary-800 shadow-sm p-4 flex items-center justify-between sticky top-0 z-30">
-      <div className="flex items-center gap-4">
+    <header className="bg-primary-900 border-b border-primary-800 shadow-sm p-4 flex items-center justify-between sticky top-0 z-50">
+      <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
         <button
           onClick={onMenuClick}
-          className="lg:hidden p-2 rounded-lg hover:bg-primary-800 transition-colors text-primary-300 hover:text-white"
+          className="lg:hidden p-2 rounded-lg hover:bg-primary-800 transition-colors text-primary-300 hover:text-white flex-shrink-0"
         >
           {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
-        <div>
-          <h2 className="text-xl font-semibold text-white">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-lg md:text-xl font-semibold text-white truncate">
             Welcome back, {userName.split(' ')[0]} 👋
           </h2>
-          <p className="text-sm text-primary-400">Ready to code and innovate!</p>
+          <p className="text-xs md:text-sm text-primary-400 hidden sm:block">Ready to code and innovate!</p>
         </div>
       </div>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 md:gap-4 flex-shrink-0">
         {/* Notifications Dropdown */}
         <div className="relative" ref={notificationsRef}>
           <button
@@ -114,7 +114,7 @@ const Navbar = ({ onMenuClick, sidebarOpen }) => {
           </button>
 
           {showNotifications && (
-            <div className="absolute right-0 mt-2 w-80 bg-primary-900 rounded-lg shadow-xl border border-primary-800 overflow-hidden z-50">
+            <div className="absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] bg-primary-900 rounded-lg shadow-xl border border-primary-800 overflow-hidden z-50">
               <div className="p-4 border-b border-primary-800">
                 <h3 className="text-white font-semibold flex items-center justify-between">
                   Notifications
@@ -136,9 +136,8 @@ const Navbar = ({ onMenuClick, sidebarOpen }) => {
                     <div
                       key={notification.id}
                       onClick={() => handleNotificationClick(notification)}
-                      className={`p-4 border-b border-primary-800 cursor-pointer hover:bg-primary-800 transition-colors ${
-                        !notification.read ? 'bg-zocc-blue-900/30' : ''
-                      }`}
+                      className={`p-4 border-b border-primary-800 cursor-pointer hover:bg-primary-800 transition-colors ${!notification.read ? 'bg-zocc-blue-900/30' : ''
+                        }`}
                     >
                       <div className="flex items-start gap-3">
                         <div className="flex-1">
@@ -193,14 +192,13 @@ const Navbar = ({ onMenuClick, sidebarOpen }) => {
             </div>
             <ChevronDown
               size={16}
-              className={`text-primary-300 transition-transform ${
-                showProfileMenu ? 'rotate-180' : ''
-              }`}
+              className={`text-primary-300 transition-transform ${showProfileMenu ? 'rotate-180' : ''
+                }`}
             />
           </button>
 
           {showProfileMenu && (
-            <div className="absolute right-0 mt-2 w-56 bg-primary-900 rounded-lg shadow-xl border border-primary-800 overflow-hidden z-50">
+            <div className="absolute right-0 mt-2 w-56 max-w-[calc(100vw-2rem)] bg-primary-900 rounded-lg shadow-xl border border-primary-800 overflow-hidden z-50">
               <div className="p-4 border-b border-primary-800">
                 <p className="text-white font-semibold">{userName}</p>
                 <p className="text-primary-400 text-sm truncate">{user?.email}</p>

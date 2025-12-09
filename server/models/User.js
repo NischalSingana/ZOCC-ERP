@@ -10,11 +10,19 @@ const userSchema = new mongoose.Schema({
   },
   idNumber: {
     type: String,
-    required: false, // Will be set during registration
+    required: false,
     trim: true,
     unique: true,
-    sparse: true, // Allows multiple null/undefined values
-    match: [/^\d{10}$/, 'ID number must be exactly 10 digits']
+    sparse: true,
+    validate: {
+      validator: function (v) {
+        // Allow null, undefined, or empty string
+        if (!v || v === '') return true;
+        // Otherwise must be exactly 10 digits
+        return /^\d{10}$/.test(v);
+      },
+      message: 'ID number must be exactly 10 digits'
+    }
   },
   email: {
     type: String,

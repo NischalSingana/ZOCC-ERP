@@ -582,7 +582,8 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 ## 👥 Authors
 
-- **Nischal Singana** - *Initial work* - [GitHub](https://github.com/NischalSingana)
+- **Nischal Singana**  - [GitHub](https://github.com/NischalSingana)
+- **Kushaal Badavath** - [GitHub](https://github.com/KushaalNayak) 
 
 ---
 

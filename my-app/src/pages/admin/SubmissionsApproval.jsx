@@ -102,7 +102,7 @@ const SubmissionsApproval = () => {
 
   const handleDownload = async (submission) => {
     if (!submission.fileUrl) {
-      showToast.success('File URL is not available');
+      showToast.error('File URL is not available');
       return;
     }
 
@@ -115,18 +115,19 @@ const SubmissionsApproval = () => {
         // If it's a signed URL or full URL, extract the key
         const match = fileUrl.match(/(submissions\/[^?]+)/);
         if (match) {
-          fileKey = match[1]; // Don't decode here, will encode later
+          fileKey = match[1];
         } else {
-          // If we can't extract a key, try using the URL directly
-          const token = localStorage.getItem('authToken');
-          const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-          const response = await fetch(fileUrl, { headers });
-          if (response.ok) {
-            const blob = await response.blob();
-            downloadBlob(blob, submission);
+          // If we can't extract a key, try downloading directly
+          try {
+            const response = await axiosInstance.get(fileUrl, {
+              responseType: 'blob'
+            });
+            downloadBlob(response.data, submission);
+            showToast.success('File downloaded successfully');
             return;
+          } catch (error) {
+            throw new Error('Failed to download from URL');
           }
-          throw new Error('Failed to download from URL');
         }
       } else if (fileUrl.startsWith('submissions/')) {
         fileKey = fileUrl;
@@ -135,44 +136,20 @@ const SubmissionsApproval = () => {
         return;
       }
 
-      // Always use the proxy endpoint with the key for reliable downloads
-      let downloadUrl = `${API_URL}/api/files/${encodeURIComponent(fileKey)}`;
-      // Fix any double slashes in the URL (in case API_URL has trailing slash)
-      downloadUrl = downloadUrl.replace(/([^:]\/)\/+/g, '$1');
+      // Use axiosInstance to download the file (avoids CORS preflight issues)
+      const downloadUrl = `/api/files/${encodeURIComponent(fileKey)}`;
 
-      const token = localStorage.getItem('authToken');
-
-      // Always include Authorization header for admin downloads
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-      };
-
-      const response = await fetch(downloadUrl, {
-        headers,
-        method: 'GET'
+      const response = await axiosInstance.get(downloadUrl, {
+        responseType: 'blob'
       });
 
-      if (!response.ok) {
-        // Try alternative encoding if first attempt fails
-        if (response.status === 404) {
-          const altUrl = downloadUrl.replace(/%20/g, '+');
-          const retryResponse = await fetch(altUrl, { headers });
-          if (retryResponse.ok) {
-            const blob = await retryResponse.blob();
-            downloadBlob(blob, submission);
-            return;
-          }
-        }
-        const errorText = await response.text().catch(() => 'Unknown error');
-        throw new Error(`Download failed: ${response.status} - ${errorText}`);
+      if (response.data) {
+        downloadBlob(response.data, submission);
+        showToast.success('File downloaded successfully');
       }
-
-      const blob = await response.blob();
-      downloadBlob(blob, submission);
-      showToast.success('File downloaded successfully');
     } catch (error) {
       console.error('Error downloading file:', error);
-      showToast.error(error.message || 'Failed to download file');
+      showToast.error(error.response?.data?.error || error.message || 'Failed to download file');
 
       // Fallback: try opening in new tab
       try {
@@ -181,14 +158,10 @@ const SubmissionsApproval = () => {
           const token = localStorage.getItem('authToken');
           fileUrl = `${API_URL}/api/files/${encodeURIComponent(fileUrl)}`;
           if (token) {
-            // Try to download with token in URL (not ideal but as fallback)
-            window.open(fileUrl, '_blank');
-          } else {
-            window.open(fileUrl, '_blank');
+            fileUrl += `?token=${token}`;
           }
-        } else if (fileUrl.startsWith('http')) {
-          window.open(fileUrl, '_blank');
         }
+        window.open(fileUrl, '_blank');
       } catch (fallbackError) {
         console.error('Fallback download also failed:', fallbackError);
       }

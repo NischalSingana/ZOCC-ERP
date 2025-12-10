@@ -3,12 +3,14 @@ import LiquidEther from './components/LiquidEther.jsx';
 import Login from './components/Login.jsx';
 import DashboardLayout from './layouts/DashboardLayout.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
+import { useAuth } from './context/AuthContext';
 import navLogo from './assets/navLogo.jpg';
 import sacLogo from './assets/sac_logo.png';
 import './App.css';
 
 // Student Pages
 import Overview from './pages/Overview.jsx';
+import OverviewY24 from './pages/OverviewY24.jsx';
 import Profile from './pages/Profile.jsx';
 import Sessions from './pages/Sessions.jsx';
 import Attendance from './pages/Attendance.jsx';
@@ -19,6 +21,7 @@ import Queries from './pages/Queries.jsx';
 import Contact from './pages/Contact.jsx';
 
 // Admin Pages
+import AdminOverview from './pages/admin/AdminOverview.jsx';
 import StudentDetails from './pages/admin/StudentDetails.jsx';
 import RegisteredStudents from './pages/admin/RegisteredStudents.jsx';
 import AttendanceAdmin from './pages/admin/Attendance.jsx';
@@ -28,6 +31,27 @@ import AnnouncementsAdmin from './pages/admin/Announcements.jsx';
 import TaskAdmin from './pages/admin/TaskAdmin.jsx';
 import AdminQueries from './pages/admin/Queries.jsx';
 import AccountApprovals from './pages/admin/AccountApprovals.jsx';
+
+// Component to conditionally render dashboard based on user role and ID
+const DashboardOverview = () => {
+  const { user } = useAuth();
+
+  // Check if user is admin first
+  if (user?.role === 'ADMIN') {
+    return <AdminOverview />;
+  }
+
+  // For students, check ID number
+  const idNumber = user?.idNumber?.toString() || '';
+
+  // Check if ID starts with "24" for Y24 students
+  if (idNumber.startsWith('24')) {
+    return <OverviewY24 />;
+  }
+
+  // Default to standard overview for Y25 and others
+  return <Overview />;
+};
 
 function App() {
   return (
@@ -61,7 +85,7 @@ function App() {
           element={
             <ProtectedRoute>
               <DashboardLayout>
-                <Overview />
+                <DashboardOverview />
               </DashboardLayout>
             </ProtectedRoute>
           }

@@ -1910,6 +1910,70 @@ app.post('/api/admin/students/:id/reset-password', authenticateToken, requireAdm
   }
 });
 
+// Delete user (admin only)
+app.delete('/api/users/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const userId = req.params.id;
+
+    // Find the user first
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Prevent deleting admin users
+    if (user.role === 'ADMIN') {
+      return res.status(403).json({ error: 'Cannot delete admin users' });
+    }
+
+    console.log(`🗑️  Admin ${req.userId} is deleting user ${userId} (${user.email})`);
+
+    // Delete all related data
+    const deletionResults = {
+      submissions: 0,
+      attendance: 0,
+      queries: 0,
+      otps: 0
+    };
+
+    // Delete submissions
+    const submissionsResult = await Submission.deleteMany({ userId: userId });
+    deletionResults.submissions = submissionsResult.deletedCount || 0;
+
+    // Delete attendance records
+    const attendanceResult = await Attendance.deleteMany({ userId: userId });
+    deletionResults.attendance = attendanceResult.deletedCount || 0;
+
+    // Delete queries (if Query model exists)
+    try {
+      const QueryModel = mongoose.model('Query');
+      const queriesResult = await QueryModel.deleteMany({ userId: userId });
+      deletionResults.queries = queriesResult.deletedCount || 0;
+    } catch (error) {
+      // Query model might not exist, skip
+      console.log('Query model not found, skipping query deletion');
+    }
+
+    // Delete OTPs
+    const otpsResult = await Otp.deleteMany({ email: user.email.toLowerCase() });
+    deletionResults.otps = otpsResult.deletedCount || 0;
+
+    // Finally, delete the user
+    await User.findByIdAndDelete(userId);
+
+    console.log(`✅ User deleted successfully:`, deletionResults);
+
+    res.json({
+      success: true,
+      message: 'User and all associated data deleted successfully',
+      deletedData: deletionResults
+    });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    res.status(500).json({ error: 'Failed to delete user', details: error.message });
+  }
+});
+
 
 
 // Clean up old submissions from old bucket (admin only)

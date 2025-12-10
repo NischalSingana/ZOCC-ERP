@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import axiosInstance from '../../api/axiosConfig';
 import Table from '../../components/Table';
 import { showToast } from '../../utils/toastUtils';
-import { Search, Users, Eye, Edit } from 'lucide-react';
+import { Search, Users, Eye, Edit, Trash2 } from 'lucide-react';
 
 const RegisteredStudents = () => {
   const [students, setStudents] = useState([]);
@@ -29,6 +29,26 @@ const RegisteredStudents = () => {
       showToast.error(error.response?.data?.error || 'Failed to load students');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteUser = async (student) => {
+    const studentId = student.id || student._id;
+    const studentName = student.studentFullName || student.email;
+
+    if (!confirm(`Are you sure you want to delete ${studentName}?\n\nThis will permanently delete:\n- User account\n- All submissions\n- All attendance records\n- All queries\n\nThis action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const response = await axiosInstance.delete(`/api/users/${studentId}`);
+      if (response.data?.success) {
+        showToast.success(`User ${studentName} deleted successfully`);
+        fetchStudents(); // Refresh the list
+      }
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      showToast.error(error.response?.data?.error || 'Failed to delete user');
     }
   };
 
@@ -117,6 +137,13 @@ const RegisteredStudents = () => {
             title="View Details"
           >
             <Eye size={18} className="text-zocc-blue-400" />
+          </button>
+          <button
+            onClick={() => handleDeleteUser(student)}
+            className="p-2 hover:bg-red-900/20 rounded-lg transition-colors"
+            title="Delete User"
+          >
+            <Trash2 size={18} className="text-red-400" />
           </button>
         </div>
       ),

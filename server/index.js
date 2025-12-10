@@ -103,7 +103,7 @@ app.use(cors({
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  exposedHeaders: ['Content-Length', 'Content-Type'],
+  exposedHeaders: ['Content-Length', 'Content-Type', 'Content-Disposition'],
   maxAge: 86400
 }));
 
@@ -1322,15 +1322,6 @@ app.get('/api/admin/sessions/:sessionId/attendance', authenticateToken, requireA
 
 // ========== FILE ROUTES ==========
 
-// Handle CORS preflight for file downloads
-app.options('/api/files/*', (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
-  res.setHeader('Access-Control-Max-Age', '86400'); // 24 hours
-  res.status(200).end();
-});
-
 app.get('/api/files/:filePath(*)', async (req, res) => {
   try {
     if (!r2Client || !process.env.R2_BUCKET_NAME) {
@@ -1474,7 +1465,13 @@ app.get('/api/files/:filePath(*)', async (req, res) => {
     // Set proper headers for file download
     res.setHeader('Content-Type', contentType);
     res.setHeader('Cache-Control', 'private, max-age=3600'); // 1 hour for private files
-    res.setHeader('Access-Control-Allow-Origin', '*');
+
+    // Set CORS headers based on request origin
+    const origin = req.headers.origin;
+    if (origin) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+    }
     res.setHeader('Access-Control-Expose-Headers', 'Content-Type, Content-Disposition, Content-Length');
 
     // Clean filename for Content-Disposition header

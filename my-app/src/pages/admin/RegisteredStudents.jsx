@@ -52,11 +52,18 @@ const RegisteredStudents = () => {
     }
   };
 
-  const filteredStudents = students.filter((student) =>
-    student.studentFullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.idNumber?.includes(searchTerm)
-  );
+  const filteredStudents = students
+    .filter((student) =>
+      student.studentFullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.idNumber?.includes(searchTerm)
+    )
+    .sort((a, b) => {
+      // Sort by ID number in descending order (25... first, then 24..., then 23...)
+      const idA = a.idNumber ? parseInt(a.idNumber) : 0;
+      const idB = b.idNumber ? parseInt(b.idNumber) : 0;
+      return idB - idA; // Descending order
+    });
 
   const paginatedStudents = filteredStudents.slice(
     (currentPage - 1) * itemsPerPage,

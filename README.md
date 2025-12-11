@@ -327,46 +327,7 @@ ZOCC-ERP/
 
 ---
 
-## 🔧 Environment Variables
-
-Create a `.env` file in the `server` directory with the following variables:
-
-```env
-# Server Configuration
-PORT=4000
-NODE_ENV=development
-
-# MongoDB Configuration
-MONGODB_URI=mongodb://localhost:27017/zocc-erp
-# Or for MongoDB Atlas:
-# MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/zocc-erp
-
-# JWT Configuration
-JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
-JWT_EXPIRES_IN=7d
-
-# Email Configuration (Microsoft SMTP)
-EMAIL_HOST=smtp.office365.com
-EMAIL_PORT=587
-EMAIL_USER=your-email@outlook.com
-EMAIL_PASSWORD=your-email-password
-EMAIL_FROM=your-email@outlook.com
-
-# Cloudflare R2 Configuration
-R2_ACCOUNT_ID=your-cloudflare-account-id
-R2_ACCESS_KEY_ID=your-r2-access-key
-R2_SECRET_ACCESS_KEY=your-r2-secret-key
-R2_BUCKET_NAME=your-bucket-name
-R2_PUBLIC_URL=https://your-bucket.r2.dev
-
-# CORS Configuration
-CORS_ORIGIN=http://localhost:5173
-# For production, add your frontend URL:
-# CORS_ORIGIN=https://yourdomain.com
-
-# Admin Configuration
-ADMIN_EMAIL=admin@example.com
-ADMIN_PASSWORD=admin-password-change-this
+sword-change-this
 ```
 
 ### Frontend Environment Variables (Optional)
@@ -376,7 +337,6 @@ Create a `.env` file in the `my-app` directory:
 ```env
 VITE_API_URL=http://localhost:4000
 ```
-
 ---
 
 ## 📚 API Documentation

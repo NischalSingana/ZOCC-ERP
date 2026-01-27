@@ -35,8 +35,8 @@ const DashboardLayout = ({ children }) => {
       )}
 
       {/* Main Content */}
-      <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${isMobile ? 'ml-0' : (sidebarOpen ? 'ml-64' : 'ml-20')
-        }`}>
+      <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'
+        } ml-0`}>
         {/* Topbar */}
         <Navbar onMenuClick={toggleSidebar} sidebarOpen={sidebarOpen} />
 

@@ -178,10 +178,10 @@ const Navbar = ({ onMenuClick, sidebarOpen }) => {
           {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
         <div className="min-w-0 flex-1">
-          <h2 className="text-lg md:text-xl font-semibold text-white truncate">
-            Welcome back, {userName.split(' ')[0]} 👋
+          <h2 className="text-sm md:text-xl font-semibold text-white truncate max-w-[150px] md:max-w-none">
+            {userName.split(' ')[0]} 👋
           </h2>
-          <p className="text-xs md:text-sm text-primary-400 hidden sm:block">Ready to code and innovate!</p>
+          <p className="text-xs text-primary-400 hidden lg:block">Ready to code and innovate!</p>
         </div>
       </div>
       <div className="flex items-center gap-2 md:gap-4 flex-shrink-0">
@@ -198,7 +198,7 @@ const Navbar = ({ onMenuClick, sidebarOpen }) => {
           </button>
 
           {showNotifications && (
-            <div className="absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] bg-primary-900 rounded-lg shadow-xl border border-primary-800 overflow-hidden z-50">
+            <div className="absolute right-0 mt-2 w-screen max-w-[320px] sm:w-80 bg-primary-900 rounded-lg shadow-xl border border-primary-800 overflow-hidden z-50">
               <div className="p-4 border-b border-primary-800">
                 <h3 className="text-white font-semibold flex items-center justify-between">
                   Notifications

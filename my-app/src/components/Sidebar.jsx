@@ -66,7 +66,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
       {/* Logo Section */}
       <div className="p-6 flex items-center justify-between border-b border-primary-800">
         <h1
-          className={`text-2xl font-bold text-zocc-blue-400 transition-all duration-300 whitespace-nowrap overflow-hidden ${isOpen ? 'opacity-100' : 'opacity-0 w-0'
+          className={`text-xl lg:text-2xl font-bold text-zocc-blue-400 transition-all duration-300 whitespace-nowrap overflow-hidden text-ellipsis ${isOpen ? 'opacity-100' : 'opacity-0 w-0'
             }`}
         >
           ZeroOne ERP

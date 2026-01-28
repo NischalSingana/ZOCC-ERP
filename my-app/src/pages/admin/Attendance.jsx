@@ -9,6 +9,7 @@ const AttendanceAdmin = () => {
   const [sessions, setSessions] = useState([]);
   const [selectedSession, setSelectedSession] = useState(null);
   const [attendance, setAttendance] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -216,6 +217,14 @@ const AttendanceAdmin = () => {
     },
   ];
 
+  const filteredAttendance = attendance.filter(item => {
+    const searchStr = searchTerm.toLowerCase();
+    return (
+      item.studentFullName?.toLowerCase().includes(searchStr) ||
+      item.idNumber?.toLowerCase().includes(searchStr)
+    );
+  });
+
   if (loading) {
     return <div className="text-white">Loading...</div>;
   }
@@ -230,30 +239,31 @@ const AttendanceAdmin = () => {
         {selectedSession && attendance.length > 0 && (
           <button
             onClick={handleExportExcel}
-            className="px-6 py-3 bg-gradient-to-r from-green-600 to-green-500 text-white rounded-lg hover:from-green-500 hover:to-green-400 transition-all flex items-center gap-2"
+            className="px-4 py-2 sm:px-6 sm:py-3 bg-gradient-to-r from-green-600 to-green-500 text-white rounded-lg hover:from-green-500 hover:to-green-400 transition-all flex items-center gap-2 text-sm sm:text-base"
           >
-            <Download size={20} />
-            Export Excel
+            <Download size={18} />
+            <span className="hidden sm:inline">Export Excel</span>
+            <span className="sm:hidden">Export</span>
           </button>
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <div className="lg:col-span-1">
-          <div className="bg-zocc-blue-800/30 backdrop-blur-lg rounded-lg p-6 border border-zocc-blue-700/30">
-            <h2 className="text-xl font-semibold text-white mb-4">Select Session</h2>
-            <div className="space-y-2 max-h-96 overflow-y-auto">
+          <div className="bg-zocc-blue-800/30 backdrop-blur-lg rounded-lg p-4 sm:p-6 border border-zocc-blue-700/30">
+            <h2 className="text-lg sm:text-xl font-semibold text-white mb-4">Select Session</h2>
+            <div className="space-y-2 max-h-60 lg:max-h-[calc(100vh-300px)] overflow-y-auto pr-2 custom-scrollbar">
               {sessions.map((session) => (
                 <button
                   key={session.id || session._id}
                   onClick={() => setSelectedSession(session)}
-                  className={`w-full text-left p-4 rounded-lg transition-all ${(selectedSession?.id || selectedSession?._id) === (session.id || session._id)
-                    ? 'bg-zocc-blue-600 border-2 border-zocc-blue-500'
+                  className={`w-full text-left p-3 sm:p-4 rounded-lg transition-all ${(selectedSession?.id || selectedSession?._id) === (session.id || session._id)
+                    ? 'bg-zocc-blue-600 border-2 border-zocc-blue-500 shadow-lg shadow-zocc-blue-500/20'
                     : 'bg-zocc-blue-800/30 border border-zocc-blue-700/30 hover:bg-zocc-blue-800/50'
                     }`}
                 >
-                  <h3 className="text-white font-medium">{session.title}</h3>
-                  <p className="text-sm text-zocc-blue-300">
+                  <h3 className="text-white font-medium text-sm sm:text-base">{session.title}</h3>
+                  <p className="text-xs sm:text-sm text-zocc-blue-300">
                     {session.date ? new Date(session.date).toLocaleDateString() : 'N/A'}
                   </p>
                 </button>
@@ -262,23 +272,115 @@ const AttendanceAdmin = () => {
           </div>
         </div>
 
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-3">
           {selectedSession ? (
-            <div className="bg-zocc-blue-800/30 backdrop-blur-lg rounded-lg p-6 border border-zocc-blue-700/30">
-              <h2 className="text-xl font-semibold text-white mb-4">
-                Attendance for {selectedSession.title}
-              </h2>
-              <Table
-                data={attendance}
-                columns={columns}
-                keyExtractor={(item) => item.userId || item._id}
-                emptyMessage="No attendance records found"
-              />
+            <div className="bg-zocc-blue-800/30 backdrop-blur-lg rounded-lg p-4 sm:p-6 border border-zocc-blue-700/30">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <h2 className="text-lg sm:text-xl font-semibold text-white">
+                  Attendance: {selectedSession.title}
+                </h2>
+                <div className="text-sm text-zocc-blue-300">
+                  Total Students: {filteredAttendance.length}
+                </div>
+              </div>
+
+              <div className="mb-6">
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Search by name or ID number..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full p-3 sm:p-4 bg-zocc-blue-900/50 border border-zocc-blue-700/30 rounded-lg text-white placeholder-zocc-blue-400 focus:outline-none focus:ring-2 focus:ring-zocc-blue-500 transition-all font-medium"
+                  />
+                </div>
+              </div>
+
+              {/* Desktop View */}
+              <div className="hidden md:block">
+                <Table
+                  data={filteredAttendance}
+                  columns={columns}
+                  keyExtractor={(item) => item.userId || item._id}
+                  emptyMessage="No attendance records found"
+                />
+              </div>
+
+              {/* Mobile View */}
+              <div className="md:hidden space-y-4">
+                {filteredAttendance.length > 0 ? (
+                  filteredAttendance.map((item) => (
+                    <div
+                      key={item.userId || item._id}
+                      className="bg-zocc-blue-900/30 border border-zocc-blue-700/20 rounded-xl p-4 space-y-4"
+                    >
+                      <div className="flex justify-between items-start gap-4">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-white font-bold text-base sm:text-lg leading-tight truncate">
+                            {item.studentFullName}
+                          </h4>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-xs text-zocc-blue-400 font-semibold tracking-wider bg-zocc-blue-400/10 px-2 py-0.5 rounded">
+                              {item.idNumber}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex-shrink-0">
+                          {columns[2].render(item)}
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between items-center pt-2 border-t border-zocc-blue-700/10">
+                        <span className="text-xs text-zocc-blue-400 font-medium uppercase">Mark Status</span>
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => handleMarkAttendance(item.userId, 'present')}
+                            className="p-2 bg-green-500/10 hover:bg-green-500/20 rounded-lg transition-colors border border-green-500/20"
+                            title="Mark Present"
+                          >
+                            <CheckCircle size={18} className="text-green-400" />
+                          </button>
+                          <button
+                            onClick={() => handleMarkAttendance(item.userId, 'absent')}
+                            className="p-2 bg-red-500/10 hover:bg-red-500/20 rounded-lg transition-colors border border-red-500/20"
+                            title="Mark Absent"
+                          >
+                            <XCircle size={18} className="text-red-400" />
+                          </button>
+                          <button
+                            onClick={() => handleMarkAttendance(item.userId, 'late')}
+                            className="p-2 bg-yellow-500/10 hover:bg-yellow-500/20 rounded-lg transition-colors border border-yellow-500/20"
+                            title="Mark Late"
+                          >
+                            <Clock size={18} className="text-yellow-400" />
+                          </button>
+                          <button
+                            onClick={() => handleMarkAttendance(item.userId, 'excused')}
+                            className="p-2 bg-blue-500/10 hover:bg-blue-500/20 rounded-lg transition-colors border border-blue-500/20"
+                            title="Mark Excused"
+                          >
+                            <CheckCircle size={18} className="text-blue-400" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-12 text-zocc-blue-300 bg-zocc-blue-900/10 rounded-lg border border-dashed border-zocc-blue-700/30">
+                    No attendance records found
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
-            <div className="bg-zocc-blue-800/30 backdrop-blur-lg rounded-lg p-12 border border-zocc-blue-700/30 text-center">
-              <Users className="mx-auto text-zocc-blue-400 mb-4" size={48} />
-              <p className="text-zocc-blue-300">Select a session to mark attendance</p>
+            <div className="bg-zocc-blue-800/30 backdrop-blur-lg rounded-lg p-12 border border-zocc-blue-700/30 text-center flex flex-col items-center justify-center min-h-[400px]">
+              <div className="p-4 bg-zocc-blue-900/50 rounded-full mb-4">
+                <Users className="text-zocc-blue-400" size={48} />
+              </div>
+              <p className="text-zocc-blue-300 text-lg">Select a session to mark attendance</p>
+              <p className="text-zocc-blue-500 text-sm mt-2 max-w-xs">
+                Pick a session from the left sidebar to view and manage student attendance levels.
+              </p>
             </div>
           )}
         </div>

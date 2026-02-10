@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import nodemailer from 'nodemailer';
+import { SendMailClient } from "zeptomail";
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
@@ -152,27 +153,16 @@ function checkDatabaseConnection(res) {
 }
 
 // Email configuration
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.office365.com',
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS
-  },
-  tls: {
-    rejectUnauthorized: false
-  }
-});
+const url = "api.zeptomail.in";
+const token = process.env.ZEPTOMAIL_API_KEY;
 
-// Verify SMTP connection
-transporter.verify((error, success) => {
-  if (error) {
-    console.log('❌ SMTP connection error:', error);
-  } else {
-    console.log('✅ SMTP server is ready to send emails');
-  }
-});
+const zeptoClient = new SendMailClient({ url, token });
+
+// Verify SMTP connection (Placeholder for legacy/compatibility if needed, or remove)
+// ZeptoMail API doesn't have a direct 'verify' like nodemailer but we'll use it in routes
+
+// ZeptoMail handles delivery via API
+console.log('✅ ZeptoMail client initialized');
 
 // Email templates
 function getOTPEmailTemplate(otp) {
@@ -308,19 +298,28 @@ app.post('/api/auth/request-otp', async (req, res) => {
     );
 
 
-    // Send OTP email via SMTP
+    // Send OTP email via ZeptoMail
     try {
-      await transporter.sendMail({
-        from: `"ZeroOne Coding Club" <${process.env.SMTP_USER}>`,
-        to: email,
+      await zeptoClient.sendMail({
+        from: {
+          address: process.env.ZEPTOMAIL_SENDER_EMAIL,
+          name: process.env.ZEPTOMAIL_SENDER_NAME || "ZeroOne Coding Club"
+        },
+        to: [
+          {
+            email_address: {
+              address: email,
+              name: email.split('@')[0]
+            }
+          }
+        ],
         subject: 'Email Verification OTP - ZeroOne Coding Club ERP',
-        text: `Your email verification code is: ${otp}\n\nThis code will expire in 5 minutes.`,
-        html: getOTPEmailTemplate(otp)
+        htmlbody: getOTPEmailTemplate(otp)
       });
-      console.log(`✅ OTP email sent to ${email}`);
+      console.log(`✅ OTP email sent to ${email} via ZeptoMail`);
     } catch (emailError) {
-      console.error('⚠️ Email sending failed (OTP still generated):', emailError.message);
-      console.log(`📧 OTP for ${email}: ${otp} (Email not sent - check SMTP configuration)`);
+      console.error('⚠️ ZeptoMail email sending failed (OTP still generated):', emailError.message);
+      console.log(`📧 OTP for ${email}: ${otp} (Email not sent - check ZeptoMail configuration)`);
     }
 
     // Always return success with OTP
@@ -663,15 +662,25 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     await Otp.create({ email: user.email.toLowerCase(), otp, expiresAt, attempts: 0, type: 'password-reset' });
 
     try {
-      await transporter.sendMail({
-        from: `"ZeroOne Coding Club" <${process.env.SMTP_USER}>`,
-        to: user.email,
+      await zeptoClient.sendMail({
+        from: {
+          address: process.env.ZEPTOMAIL_SENDER_EMAIL,
+          name: process.env.ZEPTOMAIL_SENDER_NAME || "ZeroOne Coding Club"
+        },
+        to: [
+          {
+            email_address: {
+              address: user.email,
+              name: user.email.split('@')[0]
+            }
+          }
+        ],
         subject: 'Password Reset OTP - ZeroOne Coding Club ERP',
-        text: `Your password reset code is: ${otp}\n\nThis code will expire in 5 minutes.`,
-        html: getPasswordResetEmailTemplate(otp)
+        htmlbody: getPasswordResetEmailTemplate(otp)
       });
+      console.log(`✅ Password reset email sent to ${user.email} via ZeptoMail`);
     } catch (emailError) {
-      console.error('Error sending password reset email:', emailError);
+      console.error('Error sending password reset email via ZeptoMail:', emailError);
       // Continue anyway - OTP is already saved
     }
 
